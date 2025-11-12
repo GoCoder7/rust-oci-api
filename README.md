@@ -26,7 +26,6 @@ tokio = { version = "1", features = ["full"] }
 **Import commonly used types:**
 
 ```rust
-// Option 1: Import specific types
 use oci_api::{OciConfig, OciClient};
 use oci_api::email::{EmailClient, Email, EmailAddress, Recipients};
 ```
@@ -47,9 +46,10 @@ There are two ways to configure OCI credentials which are used for generating(si
 - `fingerprint`
 - `key_file` → path to private key file
 
-Create a `.env` file in your project root:
 
 ```bash
+# use dotenvy or similar to load environment variables from `.env` in development
+
 # point to a config file path
 OCI_CONFIG=/path/to/.oci/config
 
@@ -96,8 +96,6 @@ OCI_COMPARTMENT_ID=ocid1.compartment.oc1..aaaaaa...  # Optional, defaults to ten
 ```rust
 use oci_api::OciConfig;
 
-// Automatically uses environment variables with priority:
-// Individual env vars > OCI_CONFIG > Error
 let config = OciConfig::from_env()?;
 ```
 

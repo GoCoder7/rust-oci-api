@@ -3,11 +3,21 @@ name = "oci-api"
 version = "0.1.0"
 edition = "2024"
 authors = ["GoCoder7"]
-license = "MIT OR Apache-2.0"
+license = "MIT"
 description = "OCI (Oracle Cloud Infrastructure) API client for Rust"
 repository = "https://github.com/GoCoder7/rust-oci-api"
+documentation = "https://docs.rs/oci-api"
+readme = "README.md"
 keywords = ["oci", "oracle", "cloud", "api"]
 categories = ["api-bindings"]
+exclude = [
+    ".env",
+    ".env.*",
+    ".github/",
+    "tests/fixtures/",
+    "*.pem",
+    "*.key",
+]
 
 [dependencies]
 # 비동기 런타임

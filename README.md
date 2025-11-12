@@ -8,7 +8,7 @@ Currently supports:
 ## Features
 
 - 🔐 OCI HTTP request signing (compliant with OCI specifications)
-- 📧 Email Delivery API support
+- 📧 Email Delivery API supportㅁ
 - 🔄 Async/await support (Tokio)
 - 🛡️ Type-safe API with comprehensive error handling
 - ⚙️ Flexible configuration (environment variables, config files, or programmatic)
@@ -296,4 +296,5 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 ## Support
 
 For issues and feature requests, please use [GitHub Issues](https://github.com/GoCoder7/rust-oci-api/issues).
+You can request any OCI APIs, and I will try to implement them as soon as possible.
 

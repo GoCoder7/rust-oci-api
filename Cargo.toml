@@ -2,5 +2,42 @@
 name = "oci-api"
 version = "0.1.0"
 edition = "2024"
+authors = ["GoCoder7"]
+license = "MIT OR Apache-2.0"
+description = "OCI (Oracle Cloud Infrastructure) API client for Rust"
+repository = "https://github.com/GoCoder7/rust-oci-api"
+keywords = ["oci", "oracle", "cloud", "api"]
+categories = ["api-bindings"]
 
 [dependencies]
+# 비동기 런타임
+tokio = { version = "1.40", features = ["rt-multi-thread", "macros"] }
+
+# HTTP 클라이언트
+reqwest = { version = "0.12", features = ["json"] }
+httpdate = "1.0"
+
+# 직렬화/역직렬화
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# INI 파일 파싱 (OCI config 파일 로드용)
+rust-ini = "0.21"
+
+# 에러 핸들링
+thiserror = "2.0"
+
+# 임시 파일 (PEM 키 저장용)
+tempfile = "3.14"
+
+# RSA 서명 (OCI API 서명용)
+rsa = { version = "0.9", features = ["sha2"] }
+sha2 = "0.10"
+base64 = "0.22"
+
+[dev-dependencies]
+tokio = { version = "1", features = ["full"] }
+mockito = "1.5"
+wiremock = "0.6"
+env_logger = "0.11"
+dotenvy = "0.15"

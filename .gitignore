@@ -1,1 +1,36 @@
-/target
+# Rust 표준
+/target/
+**/*.rs.bk
+*.pdb
+
+# Cargo
+Cargo.lock
+
+# IDE 설정 파일
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# 테스트용 민감 정보
+*.pem
+*.key
+.oci/
+oci_config
+
+# 환경변수 파일
+.env
+.env.local
+.env.*.local
+
+# 테스트용 fixtures
+/tests/fixtures/
+
+# 로그 파일
+*.log
+
+# 임시 파일
+tmp/
+temp/

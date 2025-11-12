@@ -1,14 +1,38 @@
-pub fn add(left: u64, right: u64) -> u64 {
-    left + right
-}
+//! # OCI API
+//!
+//! Oracle Cloud Infrastructure (OCI) API client for Rust.
+//!
+//! ## Features
+//!
+//! - Environment variable-based authentication
+//! - Email Delivery service support
+//! - Async I/O (tokio)
+//!
+//! ## Quick Start
+//!
+//! ```no_run
+//! use oci_api::auth::OciConfig;
+//!
+//! #[tokio::main]
+//! async fn main() -> Result<(), Box<dyn std::error::Error>> {
+//!     // Load configuration from environment variables
+//!     let config = OciConfig::from_env()?;
+//!     
+//!     Ok(())
+//! }
+//! ```
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+// Module declarations
+pub mod auth;
+pub mod client;
+pub mod error;
+pub mod services;
+pub mod utils;
 
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
-}
+// Re-exports for convenient imports
+pub use auth::OciConfig;
+pub use client::OciClient;
+pub use error::{OciError, Result};
+
+// Re-export email module to allow `oci_api::email::*` (without `services`)
+pub use services::email;

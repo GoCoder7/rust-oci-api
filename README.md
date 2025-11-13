@@ -167,7 +167,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .body_text("This is a test email sent via OCI Email Delivery API.")
         .build()?;
     
-    // Send email (compartment_id is automatically injected from OciClient)
+    // Send email
     let response = email_client.send(email).await?;
     println!("Email sent! Message ID: {}", response.message_id);
     
@@ -206,9 +206,10 @@ let with_name = EmailAddress::with_name("user@example.com", "User Name");
 
 #### Recipients
 
-You can use multiple Recipients constructors(`to`(=`new`), `cc`, `bcc`) or builder pattern.
+Recipients needs at least one `to` or `cc` or `bcc` recipient.
+You can use builder pattern or multiple Recipients constructors(`to`(=`new`), `cc`, `bcc`) to create recipients,
 and you can also add more recipients using `add_to`, `add_cc`, `add_bcc` methods.
-each `to`, `cc`, `bcc` vectors will be unique by `EmailAddress.email` when constructed or added.
+each `to`, `cc`, `bcc` recipients will be unique by `EmailAddress.email` when constructed or added.
 
 ```rust
 // Option 1: Using builder pattern (flexible for multiple fields)
@@ -217,7 +218,7 @@ let email = Email::builder()
     .subject("Group Email")
     .body_text("This email has CC and BCC recipients")
     .recipients(
-        Recipients::builder()
+        Recipients::builder() // it must be built with at least one of `to`, `cc`, `bcc`
             .to(vec![
                 EmailAddress::new("to1@example.com"),
                 EmailAddress::with_name("to1@example.com", "to1"), // duplicate, will be ignored
@@ -235,8 +236,11 @@ let email = Email::builder()
     .subject("Group Email")
     .body_text("This email has CC and BCC recipients")
     .recipients(
-        Recipients::to(vec![EmailAddress::new("to@example.com")])
-            .add_to(vec![EmailAddress::with_name("to@example.com", "To User")]) // duplicate, will be ignored
+        Recipients::to(vec![EmailAddress::new("to@example.com")]) // create with `to` recipients
+            .add_to(vec![
+                EmailAddress::with_name("to@example.com", "To User"), // duplicate, will be ignored
+                EmailAddress::new("to2@example.com"), // will be added to `to` recipients
+            ])
             .add_cc(vec![EmailAddress::new("cc@example.com")])
             .add_bcc(vec![EmailAddress::new("bcc@example.com")])
     )

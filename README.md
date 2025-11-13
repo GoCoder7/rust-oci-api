@@ -8,7 +8,7 @@ Currently supports:
 ## Features
 
 - 🔐 OCI HTTP request signing (compliant with OCI specifications)
-- 📧 Email Delivery API supportㅁ
+- 📧 Email Delivery API support
 - 🔄 Async/await support (Tokio)
 - 🛡️ Type-safe API with comprehensive error handling
 - ⚙️ Flexible configuration (environment variables, config files, or programmatic)

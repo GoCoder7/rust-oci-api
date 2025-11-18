@@ -375,9 +375,10 @@ mod tests {
     }
 
     #[test]
+    #[serial_test::serial]
     fn test_from_env_missing_user_id() {
         unsafe {
-            std::env::remove_var("OCI_CONFIG");
+            std::env::remove_var("OCI_USER_ID");
             std::env::remove_var("OCI_USER_ID");
             std::env::remove_var("OCI_TENANCY_ID");
             std::env::remove_var("OCI_REGION");
@@ -398,6 +399,7 @@ mod tests {
     }
 
     #[test]
+    #[serial_test::serial]
     fn test_env_override_with_oci_config() {
         unsafe {
             // Clear all variables first
@@ -454,6 +456,7 @@ fingerprint=aa:bb:cc:dd:ee:ff
     }
 
     #[test]
+    #[serial_test::serial]
     fn test_oci_private_key_not_in_config() {
         unsafe {
             // OCI_CONFIG should NOT contain private_key field

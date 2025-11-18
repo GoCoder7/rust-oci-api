@@ -5,6 +5,7 @@ use crate::error::{OciError, Result};
 use crate::services::email::models::*;
 
 /// Email client
+#[derive(Clone)]
 pub struct EmailClient {
     /// OCI HTTP client
     oci_client: OciClient,

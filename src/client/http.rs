@@ -8,6 +8,7 @@ use crate::error::Result;
 use reqwest::Client;
 
 /// OCI HTTP client
+#[derive(Clone)]
 pub struct OciClient {
     /// HTTP client
     client: Client,

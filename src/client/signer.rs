@@ -24,6 +24,23 @@ pub struct OciSigner {
     _temp_key_file: Option<NamedTempFile>, // Keep temp file alive if needed
 }
 
+// Implement Clone manually. We intentionally do not clone the temporary
+// file handle (`_temp_key_file`) when cloning the signer. Cloning the
+// signer will clone the `Arc<RsaPrivateKey>` so signing still works,
+// but the cloned signer will not hold the temp file alive. The original
+// signer (if any) will keep the temp file alive while needed.
+impl Clone for OciSigner {
+    fn clone(&self) -> Self {
+        Self {
+            user_id: self.user_id.clone(),
+            tenancy_id: self.tenancy_id.clone(),
+            fingerprint: self.fingerprint.clone(),
+            private_key: Arc::clone(&self.private_key),
+            _temp_key_file: None,
+        }
+    }
+}
+
 impl OciSigner {
     /// Create new OCI signer from config
     pub fn new(config: &OciConfig) -> Result<Self> {

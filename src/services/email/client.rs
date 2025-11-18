@@ -22,12 +22,13 @@ impl EmailClient {
     /// # Arguments
     /// * `oci_client` - OCI HTTP client
     pub async fn new(oci_client: OciClient) -> Result<Self> {
-        let compartment_id = oci_client.compartment_id().to_string();
+        // Email configuration is a tenancy-level resource, so use tenancy_id
+        let tenancy_id = oci_client.tenancy_id().to_string();
         let region = oci_client.region().to_string();
 
         // Get email configuration
         let config =
-            Self::get_email_configuration_internal(&oci_client, &compartment_id, &region).await?;
+            Self::get_email_configuration_internal(&oci_client, &tenancy_id, &region).await?;
 
         Ok(Self {
             oci_client,

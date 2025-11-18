@@ -53,6 +53,11 @@ impl OciClient {
         &self.config.region
     }
 
+    /// Return tenancy ID
+    pub fn tenancy_id(&self) -> &str {
+        &self.config.tenancy_id
+    }
+
     /// Return compartment ID (defaults to tenancy_id if not set)
     pub fn compartment_id(&self) -> &str {
         self.config

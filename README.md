@@ -20,7 +20,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-oci-api = "0.4.1"
+oci-api = "0.4.2"
 tokio = { version = "1", features = ["full"] }
 ```
 
@@ -334,14 +334,14 @@ For OCI Object Storage documentation, see:
 The library provides comprehensive error types:
 
 ```rust
-use oci_api::{OciError, Result};
+use oci_api::{Error, Result};
 
 match email_client.send(email).await {
     Ok(response) => println!("Sent: {}", response.message_id),
-    Err(OciError::ApiError(status, body)) => {
+    Err(Error::ApiError(status, body)) => {
         eprintln!("API error {}: {}", status, body);
     }
-    Err(OciError::AuthError(msg)) => {
+    Err(Error::AuthError(msg)) => {
         eprintln!("Authentication error: {}", msg);
     }
     Err(e) => eprintln!("Other error: {}", e),

@@ -18,9 +18,8 @@
 //! cargo run --example send_html_email
 //! ```
 
-use oci_api::auth::OciConfig;
-use oci_api::client::OciClient;
-use oci_api::services::email::{Email, EmailAddress, EmailClient, Recipients};
+use oci_api::client::Oci;
+use oci_api::services::email::{Email, EmailAddress, EmailDelivery, Recipients};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -29,17 +28,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Load configuration from environment variables
     println!("Loading OCI configuration from environment variables...");
-    let config = OciConfig::from_env()?;
-    let tenancy_id = config.tenancy_id.clone();
+    let oci_client = Oci::from_env()?;
+    let tenancy_id = oci_client.tenancy_id().to_string();
     let compartment_id = std::env::var("OCI_COMPARTMENT_ID").unwrap_or_else(|_| tenancy_id.clone());
-
-    // Create OCI HTTP client
-    println!("Creating OCI HTTP client...");
-    let oci_client = OciClient::new(&config)?;
 
     // Create Email Delivery client
     println!("Creating Email Delivery client...");
-    let email_client = EmailClient::new(oci_client).await?;
+    let email_client = EmailDelivery::new(oci_client).await?;
 
     // Get approved senders
     println!("Fetching approved senders...");

@@ -4,6 +4,7 @@ A Rust client library for Oracle Cloud Infrastructure (OCI) APIs.
 
 Currently supports:
 - **Email Delivery Service** - Send emails via OCI Email Delivery
+- **Object Storage Service** - Manage buckets and objects
 
 ## Features
 
@@ -19,15 +20,16 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-oci-api = "0.1"
+oci-api = "0.4"
 tokio = { version = "1", features = ["full"] }
 ```
 
 **Import commonly used types:**
 
 ```rust
-use oci_api::{OciConfig, OciClient};
-use oci_api::email::{EmailClient, Email, EmailAddress, Recipients};
+use oci_api::Oci;
+use oci_api::email::{EmailDelivery, Email, EmailAddress, Recipients};
+use oci_api::object_storage::ObjectStorage;
 ```
 
 
@@ -44,7 +46,7 @@ There are two ways to configure OCI credentials which are used for generating(si
 - `tenancy` → `tenancy_id`
 - `region`
 - `fingerprint`
-- `key_file` → path to private key file
+- `key_file`: path to private key file
 
 
 ```bash
@@ -94,9 +96,9 @@ OCI_COMPARTMENT_ID=ocid1.compartment.oc1..aaaaaa...  # Optional, defaults to ten
 **Load configuration:**
 
 ```rust
-use oci_api::OciConfig;
+use oci_api::Oci;
 
-let config = OciConfig::from_env()?;
+let oci = Oci::from_env()?;
 ```
 
 **Priority Summary:**
@@ -118,10 +120,10 @@ let config = OciConfig::from_env()?;
 ### Option 2: Programmatic Configuration
 
 ```rust
-use oci_api::OciConfig;
+use oci_api::Oci;
 
 // build from scratch using individual fields
-let config = OciConfig::builder()
+let oci = Oci::builder()
     .user_id("ocid1.user.oc1..aaaaaa...")
     .tenancy_id("ocid1.tenancy.oc1..aaaaaa...")
     .region("ap-chuncheon-1")
@@ -131,7 +133,7 @@ let config = OciConfig::builder()
     .build()?;
 
 // or load from config file and override specific fields
-let config = OciConfig::builder()
+let oci = Oci::builder()
     .config("/path/to/.oci/config")?  // Load from file
     .private_key("/production/path/to/key.pem")?  // Override key_file from config
     .compartment_id("ocid1.compartment.oc1..aaaaaa...")  // Set compartment
@@ -148,17 +150,18 @@ let config = OciConfig::builder()
 ## Email Delivery API
 
 ```rust
-use oci_api::{OciConfig, OciClient};
-use oci_api::email::{EmailClient, Email, EmailAddress, Recipients};
+use oci_api::Oci;
+use oci_api::email::{EmailDelivery, Email, EmailAddress, Recipients};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Load configuration and create clients
-    let config = OciConfig::from_env()?;
-    let oci_client = OciClient::new(&config)?;
-    let email_client = EmailClient::new(oci_client).await?;
+    // create an email delivery instance
+    let oci = Oci::from_env()?;
+    let email_delivery = EmailDelivery::new(oci).await?;
+    // or chaining from oci
+    let email_delivery = Oci::from_env()?.email_delivery().await?;
     
-    // Prepare email
+    // make an email
     let email = Email::builder()
         .sender(EmailAddress::new("approved-sender@example.com"))  // Must be an approved sender
         .recipients(Recipients::to(vec![EmailAddress::new("recipient@example.com")]))
@@ -167,8 +170,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .body_text("This is a test email sent via OCI Email Delivery API.")
         .build()?;
     
-    // Send email
-    let response = email_client.send(email).await?;
+    // send email
+    let response = email_delivery.send(email).await?;
     println!("Email sent! Message ID: {}", response.message_id);
     
     Ok(())
@@ -180,8 +183,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 you can send body as text or HTML or both, but at least one is required. if both are provided(recommended), email clients will choose HTML if available, otherwise plain text.
 
 ```rust
-use oci_api::{OciConfig, OciClient};
-use oci_api::email::{EmailClient, Email, EmailAddress, Recipients};
+use oci_api::Oci;
+use oci_api::email::{EmailDelivery, Email, EmailAddress, Recipients};
 
 let email = Email::builder()
     .sender(EmailAddress::new("approved-sender@example.com"))
@@ -191,7 +194,7 @@ let email = Email::builder()
     .body_text("Plain text content")
     .build()?;
 
-let response = email_client.send(email).await?;
+let response = email_delivery.send(email).await?;
 ```
 
 
@@ -255,6 +258,74 @@ For OCI Email Delivery documentation, see:
 - [OCI Email Delivery Overview](https://docs.oracle.com/en-us/iaas/Content/Email/home.htm)
 - [OCI Email Delivery API Reference](https://docs.oracle.com/en-us/iaas/api/#/en/emaildelivery/20170907/)
 - [OCI Email Delivery Submission API Reference](https://docs.oracle.com/en-us/iaas/api/#/en/emaildeliverysubmission/20220926/)
+
+<br>
+
+## Object Storage API
+
+```rust
+use oci_api::Oci;
+use oci_api::object_storage::ObjectStorage;
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Create an object storage instance
+    let oci_client = Oci::from_env()?;
+    let os_client = ObjectStorage::new(&oci_client, "your_namespace");
+    // or chaining from Oci directly
+    let os_client = Oci::from_env()?.object_storage("your_namespace");
+
+    // Get Bucket
+    let bucket = os_client.get_bucket("your-bucket-name").await?;
+
+    // Put Object
+    let object_name = "test-object.txt";
+    let value = "Hello, OCI Object Storage!";
+    let object = bucket.put_object(object_name, value).await?;
+
+    // Get Object
+    let object = bucket.get_object(object_name).await?;
+
+    // Get or Create Object(if not exists)
+    let object = bucket.get_or_create_object(object_name, value).await?;
+
+    // --- Retention Rules ---
+    use oci_api::services::object_storage::models::{RetentionRuleDetails, RetentionDuration, RetentionTimeUnit};
+
+    // Create Retention Rule
+    let details = RetentionRuleDetails {
+        display_name: Some("My Rule".to_string()),
+        duration: Some(RetentionDuration {
+            time_amount: 30,
+            time_unit: RetentionTimeUnit::Days,
+        }),
+        time_rule_locked: None,
+    };
+    let rule = bucket.create_retention_rule(details).await?;
+
+    // List Retention Rules
+    let rules = bucket.get_retention_rules().await?;
+
+    // Get Retention Rule
+    let rule = bucket.get_retention_rule(&rule.id).await?;
+
+    // Update Retention Rule
+    let update_details = RetentionRuleDetails {
+        display_name: Some("My Rule Updated".to_string()),
+        ..Default::default()
+    };
+    let updated_rule = rule.update(&bucket, update_details).await?;
+
+    // Delete Retention Rule
+    rule.delete(&bucket).await?;
+    
+    Ok(())
+}
+```
+
+For OCI Object Storage documentation, see:
+- [OCI Object Storage Overview](https://docs.oracle.com/en-us/iaas/Content/Object/Concepts/objectstorageoverview.htm)
+- [OCI Object Storage API Reference](https://docs.oracle.com/en-us/iaas/api/#/en/objectstorage/20160918/)
 
 <br>
 

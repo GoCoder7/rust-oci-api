@@ -53,13 +53,12 @@ impl KeyLoader {
 
         if !key_path.exists() {
             return Err(OciError::KeyError(format!(
-                "Private key file not found: {}",
-                path
+                "Private key file not found: {path}"
             )));
         }
 
         let content = fs::read_to_string(key_path)
-            .map_err(|e| OciError::KeyError(format!("Failed to read private key file: {}", e)))?;
+            .map_err(|e| OciError::KeyError(format!("Failed to read private key file: {e}")))?;
 
         // Validate PEM format
         Self::validate_pem(&content)?;

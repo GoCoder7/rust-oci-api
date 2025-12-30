@@ -2,11 +2,20 @@
 //!
 //! Reads OCI configuration from file path or INI content string.
 
-use crate::auth::config::{OciConfig, OciConfigBuilder};
 use crate::auth::key_loader::KeyLoader;
 use crate::error::{OciError, Result};
 use ini::{Ini, Properties};
 use std::path::Path;
+
+/// Loaded configuration data
+#[derive(Debug)]
+pub struct LoadedConfig {
+    pub user_id: String,
+    pub tenancy_id: String,
+    pub region: String,
+    pub fingerprint: String,
+    pub private_key: String,
+}
 
 /// OCI configuration file loader
 pub struct ConfigLoader;
@@ -19,7 +28,7 @@ impl ConfigLoader {
     /// # Arguments
     /// * `config_value` - Value from OCI_CONFIG environment variable (file path or INI content)
     /// * `profile` - Profile name (default: "DEFAULT")
-    pub fn load_from_env_var(config_value: &str, profile: Option<&str>) -> Result<OciConfig> {
+    pub fn load_from_env_var(config_value: &str, profile: Option<&str>) -> Result<LoadedConfig> {
         // Check if it's a file path
         let path = Path::new(config_value);
         if path.exists() {
@@ -35,18 +44,17 @@ impl ConfigLoader {
     /// # Arguments
     /// * `ini_content` - INI format configuration string
     /// * `profile` - Profile name (default: "DEFAULT")
-    pub fn load_from_ini_content(ini_content: &str, profile: Option<&str>) -> Result<OciConfig> {
+    pub fn load_from_ini_content(ini_content: &str, profile: Option<&str>) -> Result<LoadedConfig> {
         let profile_name = profile.unwrap_or("DEFAULT");
 
         // Parse INI content
         let ini = Ini::load_from_str(ini_content)
-            .map_err(|e| OciError::IniError(format!("Failed to parse INI content: {}", e)))?;
+            .map_err(|e| OciError::IniError(format!("Failed to parse INI content: {e}")))?;
 
         // Find profile section
         let section = ini.section(Some(profile_name)).ok_or_else(|| {
             OciError::ConfigError(format!(
-                "Profile '{}' not found in INI content",
-                profile_name
+                "Profile '{profile_name}' not found in INI content"
             ))
         })?;
 
@@ -59,24 +67,24 @@ impl ConfigLoader {
     /// # Arguments
     /// * `path` - Configuration file path
     /// * `profile` - Profile name (default: "DEFAULT")
-    pub fn load_from_file(path: &Path, profile: Option<&str>) -> Result<OciConfig> {
+    pub fn load_from_file(path: &Path, profile: Option<&str>) -> Result<LoadedConfig> {
         let profile_name = profile.unwrap_or("DEFAULT");
 
         // Parse INI file
         let ini = Ini::load_from_file(path)
-            .map_err(|e| OciError::IniError(format!("Failed to load INI file: {}", e)))?;
+            .map_err(|e| OciError::IniError(format!("Failed to load INI file: {e}")))?;
 
         // Find profile section
         let section = ini.section(Some(profile_name)).ok_or_else(|| {
-            OciError::ConfigError(format!("Profile '{}' not found", profile_name))
+            OciError::ConfigError(format!("Profile '{profile_name}' not found"))
         })?;
 
         // Read and build config
         Self::build_config_from_section(section)
     }
 
-    /// Build OciConfig from INI section
-    fn build_config_from_section(section: &Properties) -> Result<OciConfig> {
+    /// Build LoadedConfig from INI section
+    fn build_config_from_section(section: &Properties) -> Result<LoadedConfig> {
         // Read required fields
         let user_id = section
             .get("user")
@@ -120,14 +128,13 @@ impl ConfigLoader {
 
         let private_key = KeyLoader::load(&key_path)?;
 
-        // Create OciConfig (compartment_id is None when loading from config)
-        OciConfigBuilder::default()
-            .user_id(user_id)
-            .tenancy_id(tenancy_id)
-            .region(region)
-            .fingerprint(fingerprint)
-            .private_key(private_key)?
-            .build()
+        Ok(LoadedConfig {
+            user_id,
+            tenancy_id,
+            region,
+            fingerprint,
+            private_key,
+        })
     }
 
     /// Load partial configuration from OCI_CONFIG environment variable
@@ -137,16 +144,16 @@ impl ConfigLoader {
         let ini = if std::path::Path::new(config_value).exists() {
             // It's a file path
             Ini::load_from_file(config_value)
-                .map_err(|e| OciError::ConfigError(format!("Failed to load config file: {}", e)))?
+                .map_err(|e| OciError::ConfigError(format!("Failed to load config file: {e}")))?
         } else {
             // It's INI content
             Ini::load_from_str(config_value)
-                .map_err(|e| OciError::ConfigError(format!("Failed to parse INI content: {}", e)))?
+                .map_err(|e| OciError::ConfigError(format!("Failed to parse INI content: {e}")))?
         };
 
         let profile_name = "DEFAULT";
         let section = ini.section(Some(profile_name)).ok_or_else(|| {
-            OciError::ConfigError(format!("Profile '{}' not found", profile_name))
+            OciError::ConfigError(format!("Profile '{profile_name}' not found"))
         })?;
 
         // Extract only the fields that are present

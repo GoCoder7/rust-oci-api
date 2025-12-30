@@ -2,10 +2,9 @@
 //!
 //! This test verifies that temporary PEM files are:
 //! 1. Created when PEM content is provided
-//! 2. Automatically deleted when OciClient is dropped
+//! 2. Automatically deleted when Oci is dropped
 
-use oci_api::auth::OciConfig;
-use oci_api::client::OciClient;
+use oci_api::client::Oci;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
@@ -43,35 +42,34 @@ Ae/wEOcaaJD3g0i9hhz8Blf4IA==
 fn test_temp_file_is_created_and_deleted() {
     println!("\n=== Test: Temporary file creation and cleanup ===\n");
 
-    let config = OciConfig {
-        user_id: "ocid1.user.oc1..test".to_string(),
-        tenancy_id: "ocid1.tenancy.oc1..test".to_string(),
-        region: "ap-chuncheon-1".to_string(),
-        fingerprint: "00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00".to_string(),
-        private_key: TEST_PEM.to_string(),
-        compartment_id: None,
-    };
-
     // Track the temp file path
     let temp_file_path: Arc<Mutex<Option<PathBuf>>> = Arc::new(Mutex::new(None));
     let path_clone = Arc::clone(&temp_file_path);
 
-    // Scope for OciClient
+    // Scope for Oci
     {
-        println!("Creating OciClient with PEM content...");
-        let client = OciClient::new(&config).expect("Failed to create OCI client");
+        println!("Creating Oci with PEM content...");
+        let client = Oci::builder()
+            .user_id("ocid1.user.oc1..test")
+            .tenancy_id("ocid1.tenancy.oc1..test")
+            .region("ap-chuncheon-1")
+            .fingerprint("00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00")
+            .private_key(TEST_PEM)
+            .expect("Failed to load private key")
+            .build()
+            .expect("Failed to create OCI client");
 
         // Note: We can't directly access the temp file path from outside
         // But we can verify it exists by checking stderr output (debug build only)
 
-        println!("OciClient created successfully");
+        println!("Oci created successfully");
         println!("Client is alive, temp file should exist");
 
         // Use the client to ensure it's not optimized away
         let _ = client.region();
     } // client is dropped here
 
-    println!("OciClient dropped, temp file should be deleted");
+    println!("Oci dropped, temp file should be deleted");
     println!("\n=== Test passed: Temp file lifecycle verified ===\n");
 }
 
@@ -79,26 +77,22 @@ fn test_temp_file_is_created_and_deleted() {
 fn test_no_temp_file_with_file_path() {
     println!("\n=== Test: No temp file when using file path ===\n");
 
-    let config = OciConfig {
-        user_id: "ocid1.user.oc1..test".to_string(),
-        tenancy_id: "ocid1.tenancy.oc1..test".to_string(),
-        region: "ap-chuncheon-1".to_string(),
-        fingerprint: "00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00".to_string(),
-        private_key: "/path/to/key.pem".to_string(), // File path, not PEM
-        compartment_id: None,
-    };
-
-    println!("Creating OciClient with file path...");
+    println!("Creating Oci with file path...");
 
     // This will succeed in creating the provider but will fail later when actually using it
     // That's OK - we're just testing that no temp file is created
-    let result = OciClient::new(&config);
+    let result = Oci::builder()
+        .user_id("ocid1.user.oc1..test")
+        .tenancy_id("ocid1.tenancy.oc1..test")
+        .region("ap-chuncheon-1")
+        .fingerprint("00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00")
+        .private_key("/path/to/key.pem"); // File path, not PEM
 
     if result.is_ok() {
-        println!("OciClient created (will fail when used, but that's expected)");
+        println!("Oci created (will fail when used, but that's expected)");
         println!("No temp file should have been created");
     } else {
-        println!("OciClient creation failed (expected for non-existent file)");
+        println!("Oci creation failed (expected for non-existent file)");
         println!("No temp file should have been created");
     }
 
@@ -109,20 +103,37 @@ fn test_no_temp_file_with_file_path() {
 fn test_multiple_clients_share_or_create_temp_files() {
     println!("\n=== Test: Multiple clients with PEM content ===\n");
 
-    let config = OciConfig {
-        user_id: "ocid1.user.oc1..test".to_string(),
-        tenancy_id: "ocid1.tenancy.oc1..test".to_string(),
-        region: "ap-chuncheon-1".to_string(),
-        fingerprint: "00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00".to_string(),
-        private_key: TEST_PEM.to_string(),
-        compartment_id: None,
-    };
-
     {
-        println!("Creating 3 OciClients...");
-        let client1 = OciClient::new(&config).expect("Failed to create client 1");
-        let client2 = OciClient::new(&config).expect("Failed to create client 2");
-        let client3 = OciClient::new(&config).expect("Failed to create client 3");
+        println!("Creating 3 Ocis...");
+        let client1 = Oci::builder()
+            .user_id("ocid1.user.oc1..test")
+            .tenancy_id("ocid1.tenancy.oc1..test")
+            .region("ap-chuncheon-1")
+            .fingerprint("00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00")
+            .private_key(TEST_PEM)
+            .expect("Failed to load private key")
+            .build()
+            .expect("Failed to create client 1");
+
+        let client2 = Oci::builder()
+            .user_id("ocid1.user.oc1..test")
+            .tenancy_id("ocid1.tenancy.oc1..test")
+            .region("ap-chuncheon-1")
+            .fingerprint("00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00")
+            .private_key(TEST_PEM)
+            .expect("Failed to load private key")
+            .build()
+            .expect("Failed to create client 2");
+
+        let client3 = Oci::builder()
+            .user_id("ocid1.user.oc1..test")
+            .tenancy_id("ocid1.tenancy.oc1..test")
+            .region("ap-chuncheon-1")
+            .fingerprint("00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00")
+            .private_key(TEST_PEM)
+            .expect("Failed to load private key")
+            .build()
+            .expect("Failed to create client 3");
 
         println!("All 3 clients created successfully");
         println!("Each should have its own temp file");
@@ -140,32 +151,26 @@ fn test_pem_content_detection() {
     println!("\n=== Test: PEM content vs file path detection ===\n");
 
     // Test 1: PEM content
-    let pem_config = OciConfig {
-        user_id: "ocid1.user.oc1..test".to_string(),
-        tenancy_id: "ocid1.tenancy.oc1..test".to_string(),
-        region: "ap-chuncheon-1".to_string(),
-        fingerprint: "00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00".to_string(),
-        private_key: TEST_PEM.to_string(),
-        compartment_id: None,
-    };
-
     println!("Test 1: PEM content (starts with -----BEGIN)");
-    let result1 = OciClient::new(&pem_config);
+    let result1 = Oci::builder()
+        .user_id("ocid1.user.oc1..test")
+        .tenancy_id("ocid1.tenancy.oc1..test")
+        .region("ap-chuncheon-1")
+        .fingerprint("00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00")
+        .private_key(TEST_PEM);
+
     assert!(result1.is_ok(), "Should create client with PEM content");
     println!("✓ Client created with PEM content");
 
     // Test 2: File path
-    let path_config = OciConfig {
-        user_id: "ocid1.user.oc1..test".to_string(),
-        tenancy_id: "ocid1.tenancy.oc1..test".to_string(),
-        region: "ap-chuncheon-1".to_string(),
-        fingerprint: "00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00".to_string(),
-        private_key: "/some/path/to/key.pem".to_string(),
-        compartment_id: None,
-    };
-
     println!("Test 2: File path (doesn't start with -----BEGIN)");
-    let result2 = OciClient::new(&path_config);
+    let result2 = Oci::builder()
+        .user_id("ocid1.user.oc1..test")
+        .tenancy_id("ocid1.tenancy.oc1..test")
+        .region("ap-chuncheon-1")
+        .fingerprint("00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00")
+        .private_key("/some/path/to/key.pem");
+
     // This might succeed or fail depending on file existence, but should not crash
     println!(
         "✓ Client creation attempted with file path (result: {})",
@@ -174,17 +179,14 @@ fn test_pem_content_detection() {
 
     // Test 3: PEM with leading whitespace
     let pem_with_whitespace = format!("  \n\n{}", TEST_PEM);
-    let whitespace_config = OciConfig {
-        user_id: "ocid1.user.oc1..test".to_string(),
-        tenancy_id: "ocid1.tenancy.oc1..test".to_string(),
-        region: "ap-chuncheon-1".to_string(),
-        fingerprint: "00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00".to_string(),
-        private_key: pem_with_whitespace,
-        compartment_id: None,
-    };
-
     println!("Test 3: PEM with leading whitespace");
-    let result3 = OciClient::new(&whitespace_config);
+    let result3 = Oci::builder()
+        .user_id("ocid1.user.oc1..test")
+        .tenancy_id("ocid1.tenancy.oc1..test")
+        .region("ap-chuncheon-1")
+        .fingerprint("00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00")
+        .private_key(&pem_with_whitespace);
+
     assert!(result3.is_ok(), "Should handle PEM with leading whitespace");
     println!("✓ Client created with whitespace-prefixed PEM");
 

@@ -16,9 +16,8 @@
 //! - TEST_SENDER_EMAIL (optional, for email tests)
 //! - TEST_RECIPIENT_EMAIL (optional, for email tests)
 
-use oci_api::auth::OciConfig;
-use oci_api::client::OciClient;
-use oci_api::services::email::{Email, EmailAddress, EmailClient, Recipients, Sender};
+use oci_api::client::Oci;
+use oci_api::services::email::{Email, EmailAddress, EmailDelivery, Recipients, Sender};
 
 /// Load .env file if it exists
 fn load_env() {
@@ -37,35 +36,18 @@ fn has_oci_credentials() -> bool {
 
 #[tokio::test]
 #[ignore] // Run with: cargo test --test real_oci_integration_test -- --ignored
-async fn test_oci_config_from_env() {
+async fn test_oci_client_from_env() {
     if !has_oci_credentials() {
         eprintln!("Skipping test: OCI credentials not configured");
         return;
     }
 
-    let config = OciConfig::from_env().expect("Failed to load OCI config from environment");
+    let oci = Oci::from_env().expect("Failed to load OCI config from environment");
 
-    assert!(!config.user_id.is_empty());
-    assert!(!config.tenancy_id.is_empty());
-    assert!(!config.region.is_empty());
-    assert!(!config.fingerprint.is_empty());
-    assert!(!config.private_key.is_empty());
-    assert!(config.private_key.contains("-----BEGIN"));
-    assert!(config.private_key.contains("-----END"));
-}
-
-#[tokio::test]
-#[ignore]
-async fn test_oci_client_creation_from_env() {
-    if !has_oci_credentials() {
-        eprintln!("Skipping test: OCI credentials not configured");
-        return;
-    }
-
-    let config = OciConfig::from_env().expect("Failed to load config");
-    let client = OciClient::new(&config).expect("Failed to create OCI client");
-
-    assert_eq!(client.region(), config.region);
+    assert!(!oci.signer().user_id().is_empty());
+    assert!(!oci.tenancy_id().is_empty());
+    assert!(!oci.region().is_empty());
+    assert!(!oci.signer().fingerprint().is_empty());
 }
 
 #[tokio::test]
@@ -78,18 +60,16 @@ async fn test_get_email_configuration() {
         return;
     }
 
-    let config = OciConfig::from_env().expect("Failed to load config");
-    let tenancy_id = config.tenancy_id.clone();
+    let oci_client = Oci::from_env().expect("Failed to create OCI client");
+    let tenancy_id = oci_client.tenancy_id().to_string();
 
     println!("Config loaded:");
     println!("  Tenancy: {}", tenancy_id);
-    println!("  Region: {}", config.region);
-    println!("  Private key length: {}", config.private_key.len());
+    println!("  Region: {}", oci_client.region());
 
-    let oci_client = OciClient::new(&config).expect("Failed to create OCI client");
-    let email_client = EmailClient::new(oci_client)
+    let email_client = EmailDelivery::new(oci_client)
         .await
-        .expect("Failed to create EmailClient");
+        .expect("Failed to create EmailDelivery");
 
     let result = email_client.get_email_configuration(&tenancy_id).await;
 
@@ -136,12 +116,11 @@ async fn test_send_full_flow() {
     let test_recipient = std::env::var("TEST_RECIPIENT_EMAIL")
         .unwrap_or_else(|_| "recipient@example.com".to_string());
 
-    let config = OciConfig::from_env().expect("Failed to load config");
-    let tenancy_id = config.tenancy_id.clone();
-    let oci_client = OciClient::new(&config).expect("Failed to create OCI client");
-    let email_client = EmailClient::new(oci_client)
+    let oci_client = Oci::from_env().expect("Failed to load config");
+    let tenancy_id = oci_client.tenancy_id().to_string();
+    let email_client = EmailDelivery::new(oci_client)
         .await
-        .expect("Failed to create EmailClient");
+        .expect("Failed to create EmailDelivery");
 
     // Create email request
     let email_request = Email {
@@ -192,12 +171,11 @@ async fn test_email_delivery_endpoint_caching() {
         return;
     }
 
-    let config = OciConfig::from_env().expect("Failed to load config");
-    let tenancy_id = config.tenancy_id.clone();
-    let oci_client = OciClient::new(&config).expect("Failed to create OCI client");
-    let email_client = EmailClient::new(oci_client)
+    let oci_client = Oci::from_env().expect("Failed to load config");
+    let tenancy_id = oci_client.tenancy_id().to_string();
+    let email_client = EmailDelivery::new(oci_client)
         .await
-        .expect("Failed to create EmailClient");
+        .expect("Failed to create EmailDelivery");
 
     // First call - email_client is now immutable
     let config1 = email_client
@@ -225,16 +203,15 @@ async fn test_list_senders() {
         return;
     }
 
-    let config = OciConfig::from_env().expect("Failed to load config");
+    let oci_client = Oci::from_env().expect("Failed to load config");
     let compartment_id =
-        std::env::var("OCI_COMPARTMENT_ID").unwrap_or_else(|_| config.tenancy_id.clone());
+        std::env::var("OCI_COMPARTMENT_ID").unwrap_or_else(|_| oci_client.tenancy_id().to_string());
 
     println!("Listing senders in compartment: {}", compartment_id);
 
-    let oci_client = OciClient::new(&config).expect("Failed to create OCI client");
-    let email_client = EmailClient::new(oci_client)
+    let email_client = EmailDelivery::new(oci_client)
         .await
-        .expect("Failed to create EmailClient");
+        .expect("Failed to create EmailDelivery");
 
     // Test: list all senders
     let result = email_client.list_senders(&compartment_id, None, None).await;
@@ -281,14 +258,13 @@ async fn test_send_with_real_sender() {
         return;
     }
 
-    let config = OciConfig::from_env().expect("Failed to load config");
-    let tenancy_id = config.tenancy_id.clone();
+    let oci_client = Oci::from_env().expect("Failed to load config");
+    let tenancy_id = oci_client.tenancy_id().to_string();
     let compartment_id = std::env::var("OCI_COMPARTMENT_ID").unwrap_or_else(|_| tenancy_id.clone());
 
-    let oci_client = OciClient::new(&config).expect("Failed to create OCI client");
-    let email_client = EmailClient::new(oci_client)
+    let email_client = EmailDelivery::new(oci_client)
         .await
-        .expect("Failed to create EmailClient");
+        .expect("Failed to create EmailDelivery");
 
     // Get approved senders first
     let senders = email_client

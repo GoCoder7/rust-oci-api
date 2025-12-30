@@ -11,12 +11,12 @@
 //! ## Quick Start
 //!
 //! ```no_run
-//! use oci_api::auth::OciConfig;
+//! use oci_api::Oci;
 //!
 //! #[tokio::main]
 //! async fn main() -> Result<(), Box<dyn std::error::Error>> {
 //!     // Load configuration from environment variables
-//!     let config = OciConfig::from_env()?;
+//!     let oci = Oci::from_env()?;
 //!     
 //!     Ok(())
 //! }
@@ -30,9 +30,9 @@ pub mod services;
 pub mod utils;
 
 // Re-exports for convenient imports
-pub use auth::OciConfig;
-pub use client::OciClient;
+pub use client::Oci;
 pub use error::{OciError, Result};
 
 // Re-export email module to allow `oci_api::email::*` (without `services`)
 pub use services::email;
+pub use services::object_storage;

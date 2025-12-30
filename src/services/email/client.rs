@@ -1,27 +1,27 @@
 //! Email client
 
-use crate::client::OciClient;
+use crate::client::Oci;
 use crate::error::{OciError, Result};
 use crate::services::email::models::*;
 
 /// Email client
 #[derive(Clone)]
-pub struct EmailClient {
+pub struct EmailDelivery {
     /// OCI HTTP client
-    oci_client: OciClient,
+    oci_client: Oci,
 
     /// Submit endpoint (loaded from email configuration)
     submit_endpoint: String,
 }
 
-impl EmailClient {
+impl EmailDelivery {
     /// Create new Email client
     ///
     /// Loads email configuration and caches the submit endpoint.
     ///
     /// # Arguments
     /// * `oci_client` - OCI HTTP client
-    pub async fn new(oci_client: OciClient) -> Result<Self> {
+    pub async fn new(oci_client: Oci) -> Result<Self> {
         // Email configuration is a tenancy-level resource, so use tenancy_id
         let tenancy_id = oci_client.tenancy_id().to_string();
         let region = oci_client.region().to_string();
@@ -38,14 +38,14 @@ impl EmailClient {
 
     /// Get Email Configuration (internal helper)
     async fn get_email_configuration_internal(
-        oci_client: &OciClient,
+        oci_client: &Oci,
         compartment_id: &str,
         region: &str,
     ) -> Result<EmailConfiguration> {
         // Build path with query string
-        let path = format!("/20170907/configuration?compartmentId={}", compartment_id);
-        let host = format!("ctrl.email.{}.oci.oraclecloud.com", region);
-        let url = format!("https://{}{}", host, path);
+        let path = format!("/20170907/configuration?compartmentId={compartment_id}");
+        let host = format!("ctrl.email.{region}.oci.oraclecloud.com");
+        let url = format!("https://{host}{path}");
 
         // Sign request
         let (date_header, auth_header) = oci_client
@@ -93,9 +93,9 @@ impl EmailClient {
     /// * `email` - Email message
     ///
     /// # Note
-    /// The compartment_id from OciClient will be automatically set in the sender.
+    /// The compartment_id from Oci will be automatically set in the sender.
     pub async fn send(&self, mut email: Email) -> Result<SubmitEmailResponse> {
-        // Get compartment_id from OciClient
+        // Get compartment_id from Oci
         let compartment_id = self.oci_client.compartment_id().to_string();
 
         // Set compartment_id in sender if not already set
@@ -174,20 +174,20 @@ impl EmailClient {
         let mut query_params = vec![format!("compartmentId={}", compartment_id)];
 
         if let Some(state) = lifecycle_state {
-            query_params.push(format!("lifecycleState={}", state));
+            query_params.push(format!("lifecycleState={state}"));
         }
 
         if let Some(email) = email_address {
-            query_params.push(format!("emailAddress={}", email));
+            query_params.push(format!("emailAddress={email}"));
         }
 
         let query_string = query_params.join("&");
-        let path = format!("/20170907/senders?{}", query_string);
+        let path = format!("/20170907/senders?{query_string}");
         let host = format!(
             "ctrl.email.{}.oci.oraclecloud.com",
             self.oci_client.region()
         );
-        let url = format!("https://{}{}", host, path);
+        let url = format!("https://{host}{path}");
 
         // Sign request
         let (date_header, auth_header) = self

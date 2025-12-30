@@ -3,5 +3,5 @@ pub mod api;
 pub mod client;
 pub mod models;
 
-pub use client::EmailClient;
+pub use client::EmailDelivery;
 pub use models::*;

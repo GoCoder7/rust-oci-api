@@ -3,7 +3,6 @@
 //! Implements Oracle Cloud Infrastructure HTTP request signing
 //! according to the official specification.
 
-use crate::auth::OciConfig;
 use crate::error::{OciError, Result};
 use base64::{Engine as _, engine::general_purpose};
 use rsa::RsaPrivateKey;
@@ -42,42 +41,62 @@ impl Clone for OciSigner {
 }
 
 impl OciSigner {
-    /// Create new OCI signer from config
-    pub fn new(config: &OciConfig) -> Result<Self> {
+    /// Create new OCI signer
+    pub fn new(
+        user_id: &str,
+        tenancy_id: &str,
+        fingerprint: &str,
+        private_key: &str,
+    ) -> Result<Self> {
         // Check if private_key is PEM content
         let is_pem_content =
-            config.private_key.contains("-----BEGIN") && config.private_key.contains("-----END");
+            private_key.contains("-----BEGIN") && private_key.contains("-----END");
 
-        let (private_key, temp_file) = if is_pem_content {
+        let (private_key_obj, temp_file) = if is_pem_content {
             // PEM content - create temporary file
             let temp_file = NamedTempFile::new()
-                .map_err(|e| OciError::Other(format!("Failed to create temp file: {}", e)))?;
+                .map_err(|e| OciError::Other(format!("Failed to create temp file: {e}")))?;
 
-            fs::write(temp_file.path(), config.private_key.as_bytes()).map_err(|e| {
-                OciError::Other(format!("Failed to write private key to temp file: {}", e))
+            fs::write(temp_file.path(), private_key.as_bytes()).map_err(|e| {
+                OciError::Other(format!("Failed to write private key to temp file: {e}"))
             })?;
 
             let key = RsaPrivateKey::read_pkcs8_pem_file(temp_file.path()).map_err(|e| {
-                OciError::ConfigError(format!("Failed to parse private key: {}", e))
+                OciError::ConfigError(format!("Failed to parse private key: {e}"))
             })?;
 
             (key, Some(temp_file))
         } else {
             // File path - read directly
-            let key = RsaPrivateKey::read_pkcs8_pem_file(&config.private_key).map_err(|e| {
-                OciError::ConfigError(format!("Failed to read private key from file: {}", e))
+            let key = RsaPrivateKey::read_pkcs8_pem_file(private_key).map_err(|e| {
+                OciError::ConfigError(format!("Failed to read private key from file: {e}"))
             })?;
 
             (key, None)
         };
 
         Ok(Self {
-            user_id: config.user_id.clone(),
-            tenancy_id: config.tenancy_id.clone(),
-            fingerprint: config.fingerprint.clone(),
-            private_key: Arc::new(private_key),
+            user_id: user_id.to_string(),
+            tenancy_id: tenancy_id.to_string(),
+            fingerprint: fingerprint.to_string(),
+            private_key: Arc::new(private_key_obj),
             _temp_key_file: temp_file,
         })
+    }
+
+    /// Get user ID
+    pub fn user_id(&self) -> &str {
+        &self.user_id
+    }
+
+    /// Get tenancy ID
+    pub fn tenancy_id(&self) -> &str {
+        &self.tenancy_id
+    }
+
+    /// Get fingerprint
+    pub fn fingerprint(&self) -> &str {
+        &self.fingerprint
     }
 
     /// Sign an HTTP request
@@ -178,7 +197,7 @@ impl OciSigner {
         let signing_key = SigningKey::<Sha256>::new((*self.private_key).clone());
         let signature = signing_key
             .try_sign(signing_string.as_bytes())
-            .map_err(|e| OciError::AuthError(format!("Failed to sign request: {}", e)))?;
+            .map_err(|e| OciError::AuthError(format!("Failed to sign request: {e}")))?;
 
         let encoded_signature = general_purpose::STANDARD.encode(signature.to_bytes());
 
@@ -192,8 +211,7 @@ impl OciSigner {
         let key_id = format!("{}/{}/{}", self.tenancy_id, self.user_id, self.fingerprint);
 
         let authorization = format!(
-            "Signature version=\"1\",headers=\"{}\",keyId=\"{}\",algorithm=\"rsa-sha256\",signature=\"{}\"",
-            headers_list, key_id, encoded_signature
+            "Signature version=\"1\",headers=\"{headers_list}\",keyId=\"{key_id}\",algorithm=\"rsa-sha256\",signature=\"{encoded_signature}\""
         );
 
         Ok((date.to_string(), authorization))
@@ -214,18 +232,14 @@ iEWXiZLp6dPT3gJw/WmF9v6K8N8rFvQbSb3VvTlqcJYY/0KPJ7Pqe3gJ/tHkI1HN
 oF0r7fLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL
 -----END PRIVATE KEY-----"#;
 
-        let config = OciConfig {
-            user_id: "ocid1.user.oc1..test".to_string(),
-            tenancy_id: "ocid1.tenancy.oc1..test".to_string(),
-            region: "us-ashburn-1".to_string(),
-            fingerprint: "aa:bb:cc:dd:ee:ff".to_string(),
-            private_key: pem_content.to_string(),
-            compartment_id: None,
-        };
-
         // This should not panic, even though the key is invalid
         // (we're just testing the PEM detection and temp file creation)
-        let result = OciSigner::new(&config);
+        let result = OciSigner::new(
+            "ocid1.user.oc1..test",
+            "ocid1.tenancy.oc1..test",
+            "aa:bb:cc:dd:ee:ff",
+            pem_content,
+        );
         assert!(result.is_err()); // Will fail due to invalid key, but that's expected
     }
 

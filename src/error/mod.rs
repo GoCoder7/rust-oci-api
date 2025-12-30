@@ -6,7 +6,7 @@ use thiserror::Error;
 
 /// OCI API error type
 #[derive(Debug, Error)]
-pub enum OciError {
+pub enum Error {
     /// Configuration file related error
     #[error("Configuration error: {0}")]
     ConfigError(String),
@@ -54,7 +54,7 @@ pub enum OciError {
 }
 
 /// Result type alias
-pub type Result<T> = std::result::Result<T, OciError>;
+pub type Result<T> = std::result::Result<T, Error>;
 
 #[cfg(test)]
 mod tests {
@@ -62,13 +62,13 @@ mod tests {
 
     #[test]
     fn test_config_error() {
-        let error = OciError::ConfigError("test message".to_string());
+        let error = Error::ConfigError("test message".to_string());
         assert_eq!(error.to_string(), "Configuration error: test message");
     }
 
     #[test]
     fn test_env_error() {
-        let error = OciError::EnvError("OCI_USER_ID is not set".to_string());
+        let error = Error::EnvError("OCI_USER_ID is not set".to_string());
         assert_eq!(
             error.to_string(),
             "Environment variable error: OCI_USER_ID is not set"
@@ -77,7 +77,7 @@ mod tests {
 
     #[test]
     fn test_auth_error() {
-        let error = OciError::AuthError("Failed to sign request".to_string());
+        let error = Error::AuthError("Failed to sign request".to_string());
         assert_eq!(
             error.to_string(),
             "Authentication error: Failed to sign request"
@@ -86,7 +86,7 @@ mod tests {
 
     #[test]
     fn test_key_error() {
-        let error = OciError::KeyError("Private key file not found".to_string());
+        let error = Error::KeyError("Private key file not found".to_string());
         assert_eq!(
             error.to_string(),
             "Private key error: Private key file not found"
@@ -95,7 +95,7 @@ mod tests {
 
     #[test]
     fn test_api_error() {
-        let error = OciError::ApiError {
+        let error = Error::ApiError {
             code: "404".to_string(),
             message: "Resource not found".to_string(),
         };
@@ -107,7 +107,7 @@ mod tests {
 
     #[test]
     fn test_ini_error() {
-        let error = OciError::IniError("Failed to parse INI file".to_string());
+        let error = Error::IniError("Failed to parse INI file".to_string());
         assert_eq!(
             error.to_string(),
             "INI file parsing error: Failed to parse INI file"
@@ -116,22 +116,22 @@ mod tests {
 
     #[test]
     fn test_other_error() {
-        let error = OciError::Other("Something went wrong".to_string());
+        let error = Error::Other("Something went wrong".to_string());
         assert_eq!(error.to_string(), "Other error: Something went wrong");
     }
 
     #[test]
     fn test_from_io_error() {
         let io_error = std::io::Error::new(std::io::ErrorKind::NotFound, "file not found");
-        let error: OciError = io_error.into();
-        assert!(matches!(error, OciError::IoError(_)));
+        let error: Error = io_error.into();
+        assert!(matches!(error, Error::IoError(_)));
     }
 
     #[test]
     fn test_from_serde_json_error() {
         let json_error = serde_json::from_str::<serde_json::Value>("invalid json").unwrap_err();
-        let error: OciError = json_error.into();
-        assert!(matches!(error, OciError::JsonError(_)));
+        let error: Error = json_error.into();
+        assert!(matches!(error, Error::JsonError(_)));
     }
 
     #[test]
@@ -141,7 +141,7 @@ mod tests {
         }
 
         fn returns_error() -> Result<i32> {
-            Err(OciError::ConfigError("test".to_string()))
+            Err(Error::ConfigError("test".to_string()))
         }
 
         assert_eq!(returns_result().unwrap(), 42);

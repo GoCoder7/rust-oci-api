@@ -20,7 +20,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-oci-api = "0.4"
+oci-api = "0.4.1"
 tokio = { version = "1", features = ["full"] }
 ```
 

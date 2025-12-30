@@ -411,7 +411,7 @@ impl EmailBuilder {
     pub fn build(self) -> crate::error::Result<Email> {
         let sender_address = self
             .sender
-            .ok_or_else(|| crate::error::OciError::ConfigError("Sender is required".to_string()))?;
+            .ok_or_else(|| crate::error::Error::ConfigError("Sender is required".to_string()))?;
 
         // Create Sender with empty compartment_id (will be set by send)
         let sender = Sender {
@@ -420,16 +420,16 @@ impl EmailBuilder {
         };
 
         let recipients = self.recipients.ok_or_else(|| {
-            crate::error::OciError::ConfigError("Recipients are required".to_string())
+            crate::error::Error::ConfigError("Recipients are required".to_string())
         })?;
 
         let subject = self.subject.ok_or_else(|| {
-            crate::error::OciError::ConfigError("Subject is required".to_string())
+            crate::error::Error::ConfigError("Subject is required".to_string())
         })?;
 
         // Validate that at least one body (HTML or text) is provided
         if self.body_html.is_none() && self.body_text.is_none() {
-            return Err(crate::error::OciError::ConfigError(
+            return Err(crate::error::Error::ConfigError(
                 "At least one of body_html or body_text is required".to_string(),
             ));
         }
@@ -723,7 +723,7 @@ mod tests {
             .build();
 
         assert!(result.is_err());
-        if let Err(crate::error::OciError::ConfigError(msg)) = result {
+        if let Err(crate::error::Error::ConfigError(msg)) = result {
             assert!(msg.contains("body"));
         } else {
             panic!("Expected ConfigError about body");

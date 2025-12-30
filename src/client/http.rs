@@ -5,7 +5,7 @@
 use crate::auth::config_loader::ConfigLoader;
 use crate::auth::key_loader::KeyLoader;
 use crate::client::signer::OciSigner;
-use crate::error::{OciError, Result};
+use crate::error::{Error, Result};
 use crate::services::email::EmailDelivery;
 use crate::services::object_storage::ObjectStorage;
 use reqwest::Client;
@@ -51,7 +51,7 @@ impl Oci {
             .ok()
             .or_else(|| partial_config.as_ref().and_then(|c| c.user_id.clone()))
             .ok_or_else(|| {
-                OciError::EnvError(
+                Error::EnvError(
                     "OCI_USER_ID must be set (either directly or via OCI_CONFIG)".to_string(),
                 )
             })?;
@@ -60,7 +60,7 @@ impl Oci {
             .ok()
             .or_else(|| partial_config.as_ref().and_then(|c| c.tenancy_id.clone()))
             .ok_or_else(|| {
-                OciError::EnvError(
+                Error::EnvError(
                     "OCI_TENANCY_ID must be set (either directly or via OCI_CONFIG)".to_string(),
                 )
             })?;
@@ -69,7 +69,7 @@ impl Oci {
             .ok()
             .or_else(|| partial_config.as_ref().and_then(|c| c.region.clone()))
             .ok_or_else(|| {
-                OciError::EnvError(
+                Error::EnvError(
                     "OCI_REGION must be set (either directly or via OCI_CONFIG)".to_string(),
                 )
             })?;
@@ -78,7 +78,7 @@ impl Oci {
             .ok()
             .or_else(|| partial_config.as_ref().and_then(|c| c.fingerprint.clone()))
             .ok_or_else(|| {
-                OciError::EnvError(
+                Error::EnvError(
                     "OCI_FINGERPRINT must be set (either directly or via OCI_CONFIG)".to_string(),
                 )
             })?;
@@ -90,7 +90,7 @@ impl Oci {
             let full_config = ConfigLoader::load_from_env_var(&config_value, None)?;
             full_config.private_key
         } else {
-            return Err(OciError::EnvError(
+            return Err(Error::EnvError(
                 "OCI_PRIVATE_KEY must be set (or key_file must be in OCI_CONFIG)".to_string(),
             ));
         };
@@ -135,9 +135,7 @@ impl Oci {
 
     /// Return compartment ID (defaults to tenancy_id if not set)
     pub fn compartment_id(&self) -> &str {
-        self.compartment_id
-            .as_ref()
-            .unwrap_or(&self.tenancy_id)
+        self.compartment_id.as_ref().unwrap_or(&self.tenancy_id)
     }
 
     /// Create Email Delivery client
@@ -172,7 +170,7 @@ impl OciBuilder {
         self.region = Some(loaded.region);
         self.fingerprint = Some(loaded.fingerprint);
         self.private_key = Some(loaded.private_key);
-        
+
         Ok(self)
     }
 
@@ -215,11 +213,21 @@ impl OciBuilder {
     }
 
     pub fn build(self) -> Result<Oci> {
-        let user_id = self.user_id.ok_or_else(|| OciError::ConfigError("user_id is not set".to_string()))?;
-        let tenancy_id = self.tenancy_id.ok_or_else(|| OciError::ConfigError("tenancy_id is not set".to_string()))?;
-        let region = self.region.ok_or_else(|| OciError::ConfigError("region is not set".to_string()))?;
-        let fingerprint = self.fingerprint.ok_or_else(|| OciError::ConfigError("fingerprint is not set".to_string()))?;
-        let private_key = self.private_key.ok_or_else(|| OciError::ConfigError("private_key is not set".to_string()))?;
+        let user_id = self
+            .user_id
+            .ok_or_else(|| Error::ConfigError("user_id is not set".to_string()))?;
+        let tenancy_id = self
+            .tenancy_id
+            .ok_or_else(|| Error::ConfigError("tenancy_id is not set".to_string()))?;
+        let region = self
+            .region
+            .ok_or_else(|| Error::ConfigError("region is not set".to_string()))?;
+        let fingerprint = self
+            .fingerprint
+            .ok_or_else(|| Error::ConfigError("fingerprint is not set".to_string()))?;
+        let private_key = self
+            .private_key
+            .ok_or_else(|| Error::ConfigError("private_key is not set".to_string()))?;
 
         let signer = OciSigner::new(&user_id, &tenancy_id, &fingerprint, &private_key)?;
         let client = Client::builder().build()?;

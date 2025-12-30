@@ -1,7 +1,7 @@
 //! Object Storage client
 
 use crate::client::Oci;
-use crate::error::{OciError, Result};
+use crate::error::{Error, Result};
 use crate::services::object_storage::models::*;
 use serde::Deserialize;
 use serde::Serialize;
@@ -65,7 +65,7 @@ impl ObjectStorage {
         if !response.status().is_success() {
             let status = response.status();
             let body = response.text().await?;
-            return Err(OciError::ApiError {
+            return Err(Error::ApiError {
                 code: status.to_string(),
                 message: body,
             });
@@ -123,7 +123,7 @@ impl Bucket {
             "POST" => self.oci_client.client().post(&url),
             "PUT" => self.oci_client.client().put(&url),
             "DELETE" => self.oci_client.client().delete(&url),
-            _ => return Err(OciError::Other(format!("Unsupported method: {}", method))),
+            _ => return Err(Error::Other(format!("Unsupported method: {}", method))),
         };
 
         request_builder = request_builder
@@ -143,7 +143,7 @@ impl Bucket {
         if !response.status().is_success() {
             let status = response.status();
             let body = response.text().await?;
-            return Err(OciError::ApiError {
+            return Err(Error::ApiError {
                 code: status.to_string(),
                 message: body,
             });
@@ -176,7 +176,7 @@ impl Bucket {
             "POST" => self.oci_client.client().post(&url),
             "PUT" => self.oci_client.client().put(&url),
             "DELETE" => self.oci_client.client().delete(&url),
-            _ => return Err(OciError::Other(format!("Unsupported method: {}", method))),
+            _ => return Err(Error::Other(format!("Unsupported method: {}", method))),
         };
 
         request_builder = request_builder
@@ -196,7 +196,7 @@ impl Bucket {
         if !response.status().is_success() {
             let status = response.status();
             let body = response.text().await?;
-            return Err(OciError::ApiError {
+            return Err(Error::ApiError {
                 code: status.to_string(),
                 message: body,
             });
@@ -234,7 +234,7 @@ impl Bucket {
         if !response.status().is_success() {
             let status = response.status();
             let body = response.text().await?;
-            return Err(OciError::ApiError {
+            return Err(Error::ApiError {
                 code: status.to_string(),
                 message: body,
             });
@@ -272,7 +272,7 @@ impl Bucket {
         if !response.status().is_success() {
             let status = response.status();
             let body = response.text().await?;
-            return Err(OciError::ApiError {
+            return Err(Error::ApiError {
                 code: status.to_string(),
                 message: body,
             });
@@ -296,7 +296,7 @@ impl Bucket {
     pub async fn get_or_create_object(&self, object_name: &str, content: &str) -> Result<Object> {
         match self.get_object(object_name).await {
             Ok(obj) => Ok(obj),
-            Err(OciError::ApiError { code, .. }) if code.contains("404") => {
+            Err(Error::ApiError { code, .. }) if code.contains("404") => {
                 self.put_object(object_name, content).await
             }
             Err(e) => Err(e),

@@ -3,7 +3,7 @@
 //! Implements Oracle Cloud Infrastructure HTTP request signing
 //! according to the official specification.
 
-use crate::error::{OciError, Result};
+use crate::error::{Error, Result};
 use base64::{Engine as _, engine::general_purpose};
 use rsa::RsaPrivateKey;
 use rsa::pkcs1v15::SigningKey;
@@ -55,21 +55,21 @@ impl OciSigner {
         let (private_key_obj, temp_file) = if is_pem_content {
             // PEM content - create temporary file
             let temp_file = NamedTempFile::new()
-                .map_err(|e| OciError::Other(format!("Failed to create temp file: {e}")))?;
+                .map_err(|e| Error::Other(format!("Failed to create temp file: {e}")))?;
 
             fs::write(temp_file.path(), private_key.as_bytes()).map_err(|e| {
-                OciError::Other(format!("Failed to write private key to temp file: {e}"))
+                Error::Other(format!("Failed to write private key to temp file: {e}"))
             })?;
 
             let key = RsaPrivateKey::read_pkcs8_pem_file(temp_file.path()).map_err(|e| {
-                OciError::ConfigError(format!("Failed to parse private key: {e}"))
+                Error::ConfigError(format!("Failed to parse private key: {e}"))
             })?;
 
             (key, Some(temp_file))
         } else {
             // File path - read directly
             let key = RsaPrivateKey::read_pkcs8_pem_file(private_key).map_err(|e| {
-                OciError::ConfigError(format!("Failed to read private key from file: {e}"))
+                Error::ConfigError(format!("Failed to read private key from file: {e}"))
             })?;
 
             (key, None)
@@ -197,7 +197,7 @@ impl OciSigner {
         let signing_key = SigningKey::<Sha256>::new((*self.private_key).clone());
         let signature = signing_key
             .try_sign(signing_string.as_bytes())
-            .map_err(|e| OciError::AuthError(format!("Failed to sign request: {e}")))?;
+            .map_err(|e| Error::AuthError(format!("Failed to sign request: {e}")))?;
 
         let encoded_signature = general_purpose::STANDARD.encode(signature.to_bytes());
 

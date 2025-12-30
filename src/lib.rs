@@ -31,7 +31,7 @@ pub mod utils;
 
 // Re-exports for convenient imports
 pub use client::Oci;
-pub use error::{OciError, Result};
+pub use error::{Error, Result};
 
 // Re-export email module to allow `oci_api::email::*` (without `services`)
 pub use services::email;

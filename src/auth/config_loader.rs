@@ -3,7 +3,7 @@
 //! Reads OCI configuration from file path or INI content string.
 
 use crate::auth::key_loader::KeyLoader;
-use crate::error::{OciError, Result};
+use crate::error::{Error, Result};
 use ini::{Ini, Properties};
 use std::path::Path;
 
@@ -49,11 +49,11 @@ impl ConfigLoader {
 
         // Parse INI content
         let ini = Ini::load_from_str(ini_content)
-            .map_err(|e| OciError::IniError(format!("Failed to parse INI content: {e}")))?;
+            .map_err(|e| Error::IniError(format!("Failed to parse INI content: {e}")))?;
 
         // Find profile section
         let section = ini.section(Some(profile_name)).ok_or_else(|| {
-            OciError::ConfigError(format!(
+            Error::ConfigError(format!(
                 "Profile '{profile_name}' not found in INI content"
             ))
         })?;
@@ -72,11 +72,11 @@ impl ConfigLoader {
 
         // Parse INI file
         let ini = Ini::load_from_file(path)
-            .map_err(|e| OciError::IniError(format!("Failed to load INI file: {e}")))?;
+            .map_err(|e| Error::IniError(format!("Failed to load INI file: {e}")))?;
 
         // Find profile section
         let section = ini.section(Some(profile_name)).ok_or_else(|| {
-            OciError::ConfigError(format!("Profile '{profile_name}' not found"))
+            Error::ConfigError(format!("Profile '{profile_name}' not found"))
         })?;
 
         // Read and build config
@@ -88,30 +88,30 @@ impl ConfigLoader {
         // Read required fields
         let user_id = section
             .get("user")
-            .ok_or_else(|| OciError::ConfigError("user field not found in config".to_string()))?
+            .ok_or_else(|| Error::ConfigError("user field not found in config".to_string()))?
             .to_string();
 
         let tenancy_id = section
             .get("tenancy")
-            .ok_or_else(|| OciError::ConfigError("tenancy field not found in config".to_string()))?
+            .ok_or_else(|| Error::ConfigError("tenancy field not found in config".to_string()))?
             .to_string();
 
         let region = section
             .get("region")
-            .ok_or_else(|| OciError::ConfigError("region field not found in config".to_string()))?
+            .ok_or_else(|| Error::ConfigError("region field not found in config".to_string()))?
             .to_string();
 
         let fingerprint = section
             .get("fingerprint")
             .ok_or_else(|| {
-                OciError::ConfigError("fingerprint field not found in config".to_string())
+                Error::ConfigError("fingerprint field not found in config".to_string())
             })?
             .to_string();
 
         // key_file is required for traditional config file loading
         // If key_file is missing, the caller must provide private_key separately
         let key_file = section.get("key_file").ok_or_else(|| {
-            OciError::ConfigError("key_file field not found in config".to_string())
+            Error::ConfigError("key_file field not found in config".to_string())
         })?;
 
         // Load private key from key_file path
@@ -119,7 +119,7 @@ impl ConfigLoader {
         // We expand ~ to home directory for convenience
         let key_path = if key_file.starts_with("~/") {
             let home = std::env::var("HOME").map_err(|_| {
-                OciError::EnvError("Cannot find HOME environment variable".to_string())
+                Error::EnvError("Cannot find HOME environment variable".to_string())
             })?;
             key_file.replacen("~", &home, 1)
         } else {
@@ -144,16 +144,16 @@ impl ConfigLoader {
         let ini = if std::path::Path::new(config_value).exists() {
             // It's a file path
             Ini::load_from_file(config_value)
-                .map_err(|e| OciError::ConfigError(format!("Failed to load config file: {e}")))?
+                .map_err(|e| Error::ConfigError(format!("Failed to load config file: {e}")))?
         } else {
             // It's INI content
             Ini::load_from_str(config_value)
-                .map_err(|e| OciError::ConfigError(format!("Failed to parse INI content: {e}")))?
+                .map_err(|e| Error::ConfigError(format!("Failed to parse INI content: {e}")))?
         };
 
         let profile_name = "DEFAULT";
         let section = ini.section(Some(profile_name)).ok_or_else(|| {
-            OciError::ConfigError(format!("Profile '{profile_name}' not found"))
+            Error::ConfigError(format!("Profile '{profile_name}' not found"))
         })?;
 
         // Extract only the fields that are present
@@ -241,7 +241,7 @@ user=ocid1.user.test
         let result = ConfigLoader::load_from_file(ini_file.path(), Some("NONEXISTENT"));
         assert!(result.is_err());
         match result.unwrap_err() {
-            OciError::ConfigError(msg) => assert!(msg.contains("NONEXISTENT")),
+            Error::ConfigError(msg) => assert!(msg.contains("NONEXISTENT")),
             _ => panic!("Expected ConfigError"),
         }
     }

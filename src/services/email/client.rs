@@ -1,7 +1,7 @@
 //! Email client
 
 use crate::client::Oci;
-use crate::error::{OciError, Result};
+use crate::error::{Error, Result};
 use crate::services::email::models::*;
 
 /// Email client
@@ -65,7 +65,7 @@ impl EmailDelivery {
         if !response.status().is_success() {
             let status = response.status();
             let body = response.text().await?;
-            return Err(OciError::ApiError {
+            return Err(Error::ApiError {
                 code: status.to_string(),
                 message: body,
             });
@@ -146,7 +146,7 @@ impl EmailDelivery {
         if !response.status().is_success() {
             let status = response.status();
             let body = response.text().await?;
-            return Err(OciError::ApiError {
+            return Err(Error::ApiError {
                 code: status.to_string(),
                 message: body,
             });
@@ -209,7 +209,7 @@ impl EmailDelivery {
         if !response.status().is_success() {
             let status = response.status();
             let body = response.text().await?;
-            return Err(OciError::ApiError {
+            return Err(Error::ApiError {
                 code: status.to_string(),
                 message: body,
             });

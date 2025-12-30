@@ -2,7 +2,7 @@
 //!
 //! Reads RSA private key files in PEM format.
 
-use crate::error::{OciError, Result};
+use crate::error::{Error, Result};
 use std::fs;
 use std::path::Path;
 
@@ -52,13 +52,13 @@ impl KeyLoader {
         let key_path = Path::new(path);
 
         if !key_path.exists() {
-            return Err(OciError::KeyError(format!(
+            return Err(Error::KeyError(format!(
                 "Private key file not found: {path}"
             )));
         }
 
         let content = fs::read_to_string(key_path)
-            .map_err(|e| OciError::KeyError(format!("Failed to read private key file: {e}")))?;
+            .map_err(|e| Error::KeyError(format!("Failed to read private key file: {e}")))?;
 
         // Validate PEM format
         Self::validate_pem(&content)?;
@@ -71,7 +71,7 @@ impl KeyLoader {
     /// Check if `-----BEGIN` and `-----END` exist
     fn validate_pem(content: &str) -> Result<()> {
         if !content.contains("-----BEGIN") || !content.contains("-----END") {
-            return Err(OciError::KeyError("Not a valid PEM format".to_string()));
+            return Err(Error::KeyError("Not a valid PEM format".to_string()));
         }
         Ok(())
     }
@@ -100,7 +100,7 @@ mod tests {
         let result = KeyLoader::load_from_file("/nonexistent/path/to/key.pem");
         assert!(result.is_err());
         match result.unwrap_err() {
-            OciError::KeyError(msg) => assert!(msg.contains("not found")),
+            Error::KeyError(msg) => assert!(msg.contains("not found")),
             _ => panic!("Expected KeyError"),
         }
     }
@@ -117,7 +117,7 @@ mod tests {
         let result = KeyLoader::validate_pem(invalid_pem);
         assert!(result.is_err());
         match result.unwrap_err() {
-            OciError::KeyError(msg) => assert!(msg.contains("valid PEM")),
+            Error::KeyError(msg) => assert!(msg.contains("valid PEM")),
             _ => panic!("Expected KeyError"),
         }
     }
@@ -128,7 +128,7 @@ mod tests {
         let result = KeyLoader::validate_pem(invalid_pem);
         assert!(result.is_err());
         match result.unwrap_err() {
-            OciError::KeyError(msg) => assert!(msg.contains("valid PEM")),
+            Error::KeyError(msg) => assert!(msg.contains("valid PEM")),
             _ => panic!("Expected KeyError"),
         }
     }

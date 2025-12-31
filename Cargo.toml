@@ -1,6 +1,6 @@
 [package]
 name = "oci-api"
-version = "0.4.3"
+version = "0.5.0"
 edition = "2024"
 authors = ["GoCoder7"]
 license = "MIT"
@@ -44,6 +44,8 @@ tempfile = "^3.14"
 rsa = { version = "^0.9", features = ["sha2"] }
 sha2 = "0.10"
 base64 = "0.22"
+md5 = "0.7"
+crc32c = "0.6"
 
 [dev-dependencies]
 tokio = { version = "1", features = ["full"] }

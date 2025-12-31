@@ -20,7 +20,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-oci-api = "0.4.3"
+oci-api = "0.5.0"
 tokio = { version = "1", features = ["full"] }
 ```
 
@@ -283,6 +283,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let value = "Hello, OCI Object Storage!";
     let object = bucket.put_object(object_name, value).await?;
 
+    // Put Object with Checksum (Optional)
+    use oci_api::services::object_storage::models::ChecksumAlgorithm;
+    let object = bucket.put_object_with_checksum(
+        object_name, 
+        value, 
+        ChecksumAlgorithm::SHA256
+    ).await?;
+
     // Get Object
     let object = bucket.get_object(object_name).await?;
 
@@ -290,6 +298,35 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let object = bucket.get_or_create_object(object_name, value).await?;
 }
 ```
+
+### Object Integrity
+
+It automatically maps available checksum headers into `md5`(`Content-MD5`)
+and `checksum`(`opc-content-sha256`|`opc-content-sha384`|`opc-content-crc32c`) fields.
+
+ You can verify the integrity of the downloaded object using the `verify_checksums()` method.
+
+```rust
+use oci_api::services::object_storage::models::ChecksumAlgorithm;
+
+let object = bucket.get_object("my-object").await?;
+
+// Verify integrity against all available checksums
+// Returns Ok(()) if all present checksums match, or an Error if any mismatch
+object.verify_checksums()?;
+
+// Access specific checksums
+println!("MD5: {}", object.md5);
+
+if let Some(checksum) = &object.checksum {
+    match checksum.algorithm {
+        ChecksumAlgorithm::SHA256 => println!("SHA256: {}", checksum.value),
+        ChecksumAlgorithm::SHA384 => println!("SHA384: {}", checksum.value),
+        ChecksumAlgorithm::CRC32C => println!("CRC32C: {}", checksum.value),
+    }
+}
+```
+
 ```rust
 // --- Retention Rules ---
 use oci_api::services::object_storage::models::{RetentionRuleDetails, RetentionDuration, RetentionTimeUnit};

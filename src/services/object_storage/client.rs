@@ -6,6 +6,8 @@ use crate::services::object_storage::models::*;
 use serde::Deserialize;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
+use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
+use sha2::{Sha256, Sha384, Digest as ShaDigest};
 
 /// Object Storage Service Client
 #[derive(Clone)]
@@ -211,6 +213,30 @@ impl Bucket {
     /// * `object_name` - Object name
     /// * `content` - Object content
     pub async fn put_object(&self, object_name: &str, content: &str) -> Result<Object> {
+        self.put_object_internal(object_name, content, None).await
+    }
+
+    /// Put Object with Checksum
+    ///
+    /// # Arguments
+    /// * `object_name` - Object name
+    /// * `content` - Object content
+    /// * `algorithm` - Checksum algorithm to use
+    pub async fn put_object_with_checksum(
+        &self,
+        object_name: &str,
+        content: &str,
+        algorithm: ChecksumAlgorithm,
+    ) -> Result<Object> {
+        self.put_object_internal(object_name, content, Some(algorithm)).await
+    }
+
+    async fn put_object_internal(
+        &self,
+        object_name: &str,
+        content: &str,
+        algorithm: Option<ChecksumAlgorithm>,
+    ) -> Result<Object> {
         let path = format!("/n/{}/b/{}/o/{}", self.namespace, self.name, object_name);
         let url = format!("{}://{}{}", self.protocol, self.endpoint, path);
 
@@ -219,14 +245,48 @@ impl Bucket {
                 .signer()
                 .sign_request("PUT", &path, &self.endpoint, Some(content))?;
 
-        let response = self
+        let mut request_builder = self
             .oci_client
             .client()
             .put(&url)
             .header("host", &self.endpoint)
             .header("date", &date_header)
             .header("authorization", &auth_header)
-            .header("content-length", content.len().to_string())
+            .header("content-length", content.len().to_string());
+
+        if let Some(algo) = algorithm {
+            let data = content.as_bytes();
+            match algo {
+                ChecksumAlgorithm::SHA256 => {
+                    let mut hasher = Sha256::new();
+                    hasher.update(data);
+                    let result = hasher.finalize();
+                    let b64 = BASE64.encode(result);
+                    request_builder = request_builder
+                        .header("opc-checksum-algorithm", "SHA256")
+                        .header("opc-content-sha256", b64);
+                }
+                ChecksumAlgorithm::SHA384 => {
+                    let mut hasher = Sha384::new();
+                    hasher.update(data);
+                    let result = hasher.finalize();
+                    let b64 = BASE64.encode(result);
+                    request_builder = request_builder
+                        .header("opc-checksum-algorithm", "SHA384")
+                        .header("opc-content-sha384", b64);
+                }
+                ChecksumAlgorithm::CRC32C => {
+                    let crc = crc32c::crc32c(data);
+                    let bytes = crc.to_be_bytes();
+                    let b64 = BASE64.encode(bytes);
+                    request_builder = request_builder
+                        .header("opc-checksum-algorithm", "CRC32C")
+                        .header("opc-content-crc32c", b64);
+                }
+            }
+        }
+
+        let response = request_builder
             .body(content.to_string())
             .send()
             .await?;
@@ -240,9 +300,37 @@ impl Bucket {
             });
         }
 
+        let headers = response.headers();
+        let md5 = headers
+            .get("opc-content-md5")
+            .and_then(|h| h.to_str().ok())
+            .ok_or_else(|| Error::Other("Missing required header: opc-content-md5".to_string()))?
+            .to_string();
+
+        let mut checksum = None;
+
+        if let Some(val) = headers.get("opc-content-sha256").and_then(|h| h.to_str().ok()) {
+            checksum = Some(Checksum {
+                algorithm: ChecksumAlgorithm::SHA256,
+                value: val.to_string(),
+            });
+        } else if let Some(val) = headers.get("opc-content-sha384").and_then(|h| h.to_str().ok()) {
+            checksum = Some(Checksum {
+                algorithm: ChecksumAlgorithm::SHA384,
+                value: val.to_string(),
+            });
+        } else if let Some(val) = headers.get("opc-content-crc32c").and_then(|h| h.to_str().ok()) {
+            checksum = Some(Checksum {
+                algorithm: ChecksumAlgorithm::CRC32C,
+                value: val.to_string(),
+            });
+        }
+
         Ok(Object {
             name: object_name.to_string(),
             value: content.to_string(),
+            md5,
+            checksum,
         })
     }
 
@@ -278,11 +366,40 @@ impl Bucket {
             });
         }
 
+        let headers = response.headers();
+        let md5 = headers
+            .get("content-md5")
+            .or_else(|| headers.get("opc-multipart-md5"))
+            .and_then(|h| h.to_str().ok())
+            .ok_or_else(|| Error::Other("Missing required header: content-md5".to_string()))?
+            .to_string();
+
+        let mut checksum = None;
+
+        if let Some(val) = headers.get("opc-content-sha256").and_then(|h| h.to_str().ok()) {
+            checksum = Some(Checksum {
+                algorithm: ChecksumAlgorithm::SHA256,
+                value: val.to_string(),
+            });
+        } else if let Some(val) = headers.get("opc-content-sha384").and_then(|h| h.to_str().ok()) {
+            checksum = Some(Checksum {
+                algorithm: ChecksumAlgorithm::SHA384,
+                value: val.to_string(),
+            });
+        } else if let Some(val) = headers.get("opc-content-crc32c").and_then(|h| h.to_str().ok()) {
+            checksum = Some(Checksum {
+                algorithm: ChecksumAlgorithm::CRC32C,
+                value: val.to_string(),
+            });
+        }
+
         let value = response.text().await?;
 
         Ok(Object {
             name: object_name.to_string(),
             value,
+            md5,
+            checksum,
         })
     }
 

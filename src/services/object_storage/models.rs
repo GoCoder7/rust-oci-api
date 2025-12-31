@@ -60,6 +60,18 @@ pub struct RetentionRule {
     pub etag: String,
 }
 
+impl From<RetentionRule> for String {
+    fn from(rule: RetentionRule) -> Self {
+        rule.id
+    }
+}
+
+impl From<&RetentionRule> for String {
+    fn from(rule: &RetentionRule) -> Self {
+        rule.id.clone()
+    }
+}
+
 /// Retention Rule Details
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]

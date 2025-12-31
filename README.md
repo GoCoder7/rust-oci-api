@@ -20,7 +20,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-oci-api = "0.4.2"
+oci-api = "0.4.3"
 tokio = { version = "1", features = ["full"] }
 ```
 
@@ -271,12 +271,12 @@ use oci_api::object_storage::ObjectStorage;
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Create an object storage instance
     let oci_client = Oci::from_env()?;
-    let os_client = ObjectStorage::new(&oci_client, "your_namespace");
+    let storage = ObjectStorage::new(&oci_client, "your_namespace");
     // or chaining from Oci directly
-    let os_client = Oci::from_env()?.object_storage("your_namespace");
+    let storage = Oci::from_env()?.object_storage("your_namespace");
 
     // Get Bucket
-    let bucket = os_client.get_bucket("your-bucket-name").await?;
+    let bucket = storage.get_bucket("your-bucket-name").await?;
 
     // Put Object
     let object_name = "test-object.txt";
@@ -288,11 +288,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Get or Create Object(if not exists)
     let object = bucket.get_or_create_object(object_name, value).await?;
+}
+```
+```rust
+// --- Retention Rules ---
+use oci_api::services::object_storage::models::{RetentionRuleDetails, RetentionDuration, RetentionTimeUnit};
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let bucket = Oci::from_env()?
+        .object_storage("your_namespace")
+        .get_bucket("your-bucket-name")
+        .await?;
 
-    // --- Retention Rules ---
-    use oci_api::services::object_storage::models::{RetentionRuleDetails, RetentionDuration, RetentionTimeUnit};
-
-    // Create Retention Rule
+    // Create a Retention Rule
     let details = RetentionRuleDetails {
         display_name: Some("My Rule".to_string()),
         duration: Some(RetentionDuration {
@@ -303,10 +311,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
     let rule = bucket.create_retention_rule(details).await?;
 
-    // List Retention Rules
+    // Get Retention Rules Vector
     let rules = bucket.get_retention_rules().await?;
 
-    // Get Retention Rule
+    // Get Retention Rule by ID
     let rule = bucket.get_retention_rule(&rule.id).await?;
 
     // Update Retention Rule
@@ -314,10 +322,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         display_name: Some("My Rule Updated".to_string()),
         ..Default::default()
     };
-    let updated_rule = rule.update(&bucket, update_details).await?;
+    let updated_rule = bucket.update_retention_rule(&rule, update_details).await?;
 
     // Delete Retention Rule
-    rule.delete(&bucket).await?;
+    bucket.delete_retention_rule(&rule).await?;
     
     Ok(())
 }

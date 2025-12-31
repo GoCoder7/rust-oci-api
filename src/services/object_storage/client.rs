@@ -339,9 +339,10 @@ impl Bucket {
     /// Update Retention Rule
     pub async fn update_retention_rule(
         &self,
-        rule_id: &str,
+        rule_or_id: impl Into<String>,
         details: RetentionRuleDetails,
     ) -> Result<RetentionRule> {
+        let rule_id = rule_or_id.into();
         let path = format!(
             "/n/{}/b/{}/retentionRules/{}",
             self.namespace, self.name, rule_id
@@ -350,7 +351,8 @@ impl Bucket {
     }
 
     /// Delete Retention Rule
-    pub async fn delete_retention_rule(&self, rule_id: &str) -> Result<()> {
+    pub async fn delete_retention_rule(&self, rule_or_id: impl Into<String>) -> Result<()> {
+        let rule_id = rule_or_id.into();
         let path = format!(
             "/n/{}/b/{}/retentionRules/{}",
             self.namespace, self.name, rule_id

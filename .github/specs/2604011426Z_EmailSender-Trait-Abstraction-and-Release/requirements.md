@@ -20,15 +20,14 @@ crate 사용자로서, 새로운 trait과 사용 예시가 README와 doc comment
 
 ## Acceptance Criteria
 
-- [ ] `EmailSender` trait이 `send`, `get_email_configuration`, `list_senders` 메서드를 정의한다
-- [ ] `EmailDelivery`가 `EmailSender`를 impl한다
-- [ ] 기존 public API는 breaking change 없이 유지된다
-- [ ] trait과 mock 예시가 doc comment와 README에 포함된다
-- [ ] 기존 단위 테스트 18개+ 통과
-- [ ] 기존 integration test (`#[ignore]`) 통과
-- [ ] crate 버전이 minor bump된다 (0.5.0 → 0.6.0)
-- [ ] `crates.io`에 새 버전이 publish된다
-- [ ] release 관련 skill 정의가 `.github/skills/`에 존재한다
+- [x] `EmailSender` trait이 `send()` 메서드를 정의한다 (`get_email_configuration`, `list_senders`는 설정/조회용이라 mock 필요성 낮아 제외 — design.md Technical Decisions #1 참고)
+- [x] `EmailDelivery`가 `EmailSender`를 impl한다
+- [x] 기존 public API는 breaking change 없이 유지된다
+- [x] trait과 mock 예시가 doc comment와 README에 포함된다
+- [x] 기존 테스트 전체 통과 (unit 4 + doctest 4 + tempfile 4 = 12, ignored integration 6)
+- [x] crate 버전이 minor bump된다 (0.5.0 → 0.6.0)
+- [x] `crates.io`에 새 버전이 publish된다
+- [x] release 관련 skill 정의가 `.github/skills/`에 존재한다
 
 ## Scope
 

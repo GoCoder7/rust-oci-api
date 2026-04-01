@@ -36,3 +36,6 @@ pub use error::{Error, Result};
 // Re-export email module to allow `oci_api::email::*` (without `services`)
 pub use services::email;
 pub use services::object_storage;
+
+// Re-export async_trait for downstream mock implementations
+pub use async_trait::async_trait;

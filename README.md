@@ -20,7 +20,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-oci-api = "0.5.0"
+oci-api = "0.6.0"
 tokio = { version = "1", features = ["full"] }
 ```
 
@@ -254,6 +254,42 @@ let response = email_client.send(email).await?;
 
 You can also use `headers`(headerFields), `reply_to`(replyTo), and `message_id`(messageId) fields in `Email` struct. you can reference [here](https://docs.oracle.com/en-us/iaas/api/#/en/emaildeliverysubmission/20220926/datatypes/SubmitEmailDetails)
 
+### Testing with `EmailSender` trait
+
+`EmailDelivery` implements the `EmailSender` trait, which allows you to inject mock implementations for testing:
+
+```rust
+use oci_api::email::{EmailSender, EmailDelivery, Email, SubmitEmailResponse};
+use oci_api::{async_trait, Result};
+use std::sync::{Arc, Mutex};
+
+// Create a mock implementation for testing
+struct MockEmailSender {
+    sent: Arc<Mutex<Vec<String>>>,
+}
+
+#[async_trait]
+impl EmailSender for MockEmailSender {
+    async fn send(&self, email: Email) -> Result<SubmitEmailResponse> {
+        self.sent.lock().unwrap().push(email.subject.clone());
+        Ok(SubmitEmailResponse {
+            message_id: "mock-id".to_owned(),
+            envelope_id: "mock-env".to_owned(),
+            suppressed_recipients: None,
+        })
+    }
+}
+
+// Use trait object for dependency injection
+async fn send_welcome(sender: &dyn EmailSender, email: Email) -> Result<SubmitEmailResponse> {
+    sender.send(email).await
+}
+```
+
+This pattern lets you:
+- **Production**: Use `Arc<dyn EmailSender>` with `EmailDelivery` (real OCI API)
+- **Test**: Use `Arc<dyn EmailSender>` with a mock (no network calls, verify sent emails)
+
 For OCI Email Delivery documentation, see:
 - [OCI Email Delivery Overview](https://docs.oracle.com/en-us/iaas/Content/Email/home.htm)
 - [OCI Email Delivery API Reference](https://docs.oracle.com/en-us/iaas/api/#/en/emaildelivery/20170907/)
@@ -299,36 +335,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
-### Object Integrity
-
-It automatically maps available checksum headers into `md5`(`Content-MD5`)
-and `checksum`(`opc-content-sha256`|`opc-content-sha384`|`opc-content-crc32c`) fields.
-
- You can verify the integrity of the downloaded object using the `verify_checksums()` method.
+you can also work with retention rules for a bucket
 
 ```rust
-use oci_api::services::object_storage::models::ChecksumAlgorithm;
-
-let object = bucket.get_object("my-object").await?;
-
-// Verify integrity against all available checksums
-// Returns Ok(()) if all present checksums match, or an Error if any mismatch
-object.verify_checksums()?;
-
-// Access specific checksums
-println!("MD5: {}", object.md5);
-
-if let Some(checksum) = &object.checksum {
-    match checksum.algorithm {
-        ChecksumAlgorithm::SHA256 => println!("SHA256: {}", checksum.value),
-        ChecksumAlgorithm::SHA384 => println!("SHA384: {}", checksum.value),
-        ChecksumAlgorithm::CRC32C => println!("CRC32C: {}", checksum.value),
-    }
-}
-```
-
-```rust
-// --- Retention Rules ---
 use oci_api::services::object_storage::models::{RetentionRuleDetails, RetentionDuration, RetentionTimeUnit};
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -365,6 +374,34 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     bucket.delete_retention_rule(&rule).await?;
     
     Ok(())
+}
+```
+
+### Object Integrity
+
+It automatically maps available checksum headers into `md5`(`Content-MD5`)
+and `checksum`(`opc-content-sha256`|`opc-content-sha384`|`opc-content-crc32c`) fields.
+
+ You can verify the integrity of the downloaded object using the `verify_checksums()` method.
+
+```rust
+use oci_api::services::object_storage::models::ChecksumAlgorithm;
+
+let object = bucket.get_object("my-object").await?;
+
+// Verify integrity against all available checksums
+// Returns Ok(()) if all present checksums match, or an Error if any mismatch
+object.verify_checksums()?;
+
+// Access specific checksums
+println!("MD5: {}", object.md5);
+
+if let Some(checksum) = &object.checksum {
+    match checksum.algorithm {
+        ChecksumAlgorithm::SHA256 => println!("SHA256: {}", checksum.value),
+        ChecksumAlgorithm::SHA384 => println!("SHA384: {}", checksum.value),
+        ChecksumAlgorithm::CRC32C => println!("CRC32C: {}", checksum.value),
+    }
 }
 ```
 

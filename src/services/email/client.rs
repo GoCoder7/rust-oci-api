@@ -1,8 +1,11 @@
 //! Email client
 
+use async_trait::async_trait;
+
 use crate::client::Oci;
 use crate::error::{Error, Result};
 use crate::services::email::models::*;
+use crate::services::email::sender_trait::EmailSender;
 
 /// Email client
 #[derive(Clone)]
@@ -94,7 +97,12 @@ impl EmailDelivery {
     ///
     /// # Note
     /// The compartment_id from Oci will be automatically set in the sender.
-    pub async fn send(&self, mut email: Email) -> Result<SubmitEmailResponse> {
+    pub async fn send(&self, email: Email) -> Result<SubmitEmailResponse> {
+        self.send_impl(email).await
+    }
+
+    /// 실제 전송 로직 (inherent method + trait impl 공용)
+    async fn send_impl(&self, mut email: Email) -> Result<SubmitEmailResponse> {
         // Get compartment_id from Oci
         let compartment_id = self.oci_client.compartment_id().to_string();
 
@@ -217,5 +225,12 @@ impl EmailDelivery {
 
         let senders: Vec<SenderSummary> = response.json().await?;
         Ok(senders)
+    }
+}
+
+#[async_trait]
+impl EmailSender for EmailDelivery {
+    async fn send(&self, email: Email) -> Result<SubmitEmailResponse> {
+        self.send_impl(email).await
     }
 }

@@ -75,3 +75,28 @@ git push origin v{VERSION}
 - Commit message format: `release: v{VERSION}`.
 - CHANGELOG follows [Keep a Changelog](https://keepachangelog.com/) format.
 - Never publish without a passing `cargo publish --dry-run` first.
+
+## Shell Script
+
+The `bin/release.sh` script automates the full release workflow from the command line.
+
+```bash
+# Minor release (e.g., 0.6.0 → 0.7.0)
+bash .github/skills/release/bin/release.sh minor
+
+# Patch release (e.g., 0.7.0 → 0.7.1)
+bash .github/skills/release/bin/release.sh patch
+
+# Major release (e.g., 0.7.1 → 1.0.0)
+bash .github/skills/release/bin/release.sh major
+```
+
+The script performs:
+1. Version computation from current `Cargo.toml`
+2. Pre-release checks (`cargo test`, `cargo clippy`, `cargo doc --no-deps`)
+3. `Cargo.toml` and `README.md` version bump
+4. `cargo publish --dry-run` validation
+5. CHANGELOG entry check
+6. Git commit, annotated tag, `cargo publish`, and push
+
+**Note**: Update `CHANGELOG.md` manually before running the script. The script will abort if no entry for the new version is found.

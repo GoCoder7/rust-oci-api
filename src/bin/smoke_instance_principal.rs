@@ -1,9 +1,9 @@
 use std::env;
 use std::error::Error;
-use std::time::Duration;
 
 use oci_api::Oci;
-use tokio::time::sleep;
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::net::TcpListener;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
@@ -30,6 +30,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .unwrap_or(true);
 
     if secret_id.is_none() && (kms_endpoint.is_none() || key_id.is_none()) {
+        println!("no smoke targets configured yet");
+        if keep_alive {
+            return serve_healthcheck("awaiting smoke target configuration").await;
+        }
         return Err(
             "set OCI_SMOKE_SECRET_ID and/or OCI_SMOKE_KMS_MANAGEMENT_ENDPOINT + OCI_SMOKE_KEY_ID"
                 .into(),
@@ -84,11 +88,29 @@ async fn main() -> Result<(), Box<dyn Error>> {
     println!("OCI smoke runner finished successfully");
 
     if keep_alive {
-        println!("keeping container alive for log inspection");
-        loop {
-            sleep(Duration::from_secs(300)).await;
-        }
+        return serve_healthcheck("smoke runner ready").await;
     }
 
     Ok(())
+}
+
+async fn serve_healthcheck(status: &str) -> Result<(), Box<dyn Error>> {
+    let listener = TcpListener::bind("0.0.0.0:8080").await?;
+    println!("health endpoint listening on 0.0.0.0:8080");
+    println!("health status: {status}");
+
+    loop {
+        let (mut socket, _) = listener.accept().await?;
+        let body = format!("{{\"status\":\"{status}\"}}");
+        let response = format!(
+            "HTTP/1.1 200 OK\r\ncontent-type: application/json\r\ncontent-length: {}\r\nconnection: close\r\n\r\n{}",
+            body.len(),
+            body
+        );
+
+        let mut buffer = [0_u8; 1024];
+        let _ = socket.read(&mut buffer).await;
+        socket.write_all(response.as_bytes()).await?;
+        socket.shutdown().await?;
+    }
 }

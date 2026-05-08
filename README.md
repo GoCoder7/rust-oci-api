@@ -5,11 +5,15 @@ A Rust client library for Oracle Cloud Infrastructure (OCI) APIs.
 Currently supports:
 - **Email Delivery Service** - Send emails via OCI Email Delivery
 - **Object Storage Service** - Manage buckets and objects
+- **Vault Secrets Service** - Read current, staged, and versioned secret bundles
+- **Keys Service** - Read keys and trigger rotation
 
 ## Features
 
 - 🔐 OCI HTTP request signing (compliant with OCI specifications)
+- 🔄 Dual auth modes: API key and Instance Principal
 - 📧 Email Delivery API support
+- 🗝️ Vault Secrets and Keys support
 - 🔄 Async/await support (Tokio)
 - 🛡️ Type-safe API with comprehensive error handling
 - ⚙️ Flexible configuration (environment variables, config files, or programmatic)
@@ -29,11 +33,20 @@ tokio = { version = "1", features = ["full"] }
 ```rust
 use oci_api::Oci;
 use oci_api::email::{EmailDelivery, Email, EmailAddress, Recipients};
+use oci_api::keys::KeysClient;
 use oci_api::object_storage::ObjectStorage;
+use oci_api::vault::VaultSecretsClient;
 ```
 
 
 ## Configuration
+
+`oci-api` supports two authentication modes via `OCI_AUTH_MODE`:
+
+| Mode | Value | Typical runtime |
+|------|-------|-----------------|
+| API key | `api_key` (default) | local development, CI, explicit credential injection |
+| Instance Principal | `instance_principal` | OCI Compute / Coolify-hosted runtime with instance identity |
 
 There are two ways to configure OCI credentials which are used for generating(signing) `Authorization` headers and requests:
 
@@ -116,6 +129,32 @@ let oci = Oci::from_env()?;
 \* `OCI_PRIVATE_KEY` is recommended even if `OCI_CONFIG` is used, if you do not want to change the config file content between environments.
 
 ---
+
+### Option 1-B: Instance Principal Runtime
+
+When running on OCI infrastructure, switch to Instance Principal mode:
+
+```bash
+OCI_AUTH_MODE=instance_principal
+OCI_REGION=ap-seoul-1
+OCI_TENANCY_ID=ocid1.tenancy.oc1..aaaaaa...
+
+# optional: override metadata endpoint for local mock tests
+OCI_METADATA_BASE_URL=http://169.254.169.254/opc/v2
+```
+
+```rust
+use oci_api::Oci;
+
+let oci = Oci::from_env()?;
+assert_eq!(oci.auth_mode(), oci_api::client::AuthMode::InstancePrincipal);
+```
+
+Notes:
+
+- `OCI_REGION` and `OCI_TENANCY_ID` stay explicit even in Instance Principal mode.
+- The security token and session key are fetched lazily on the first signed request and refreshed automatically before expiry.
+- Local validation should use a mocked metadata/federation flow; end-to-end validation still requires an OCI-hosted runtime.
 
 ### Option 2: Programmatic Configuration
 
@@ -411,6 +450,92 @@ For OCI Object Storage documentation, see:
 
 <br>
 
+## Vault Secrets API
+
+```rust
+use oci_api::Oci;
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let oci = Oci::from_env()?;
+    let vault = oci.vault();
+
+    let current = vault.get_secret_bundle("ocid1.vaultsecret.oc1..example").await?;
+    let current_value = current.secret_bundle_content.decoded_string()?;
+
+    let pending = vault
+        .get_secret_bundle_by_stage("ocid1.vaultsecret.oc1..example", "PENDING")
+        .await?;
+
+    let previous = vault
+        .get_secret_bundle_by_version("ocid1.vaultsecret.oc1..example", 3)
+        .await?;
+
+    println!("current secret: {current_value}");
+    println!("pending stages: {:?}", pending.stages);
+    println!("previous version: {:?}", previous.version_number);
+    Ok(())
+}
+```
+
+Phase 1 scope intentionally focuses on:
+
+- current secret bundle lookup
+- staged secret bundle lookup
+- versioned secret bundle lookup
+
+## Keys API
+
+```rust
+use oci_api::Oci;
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let oci = Oci::from_env()?;
+
+    // Use the KMS management endpoint for the target vault.
+    let keys = oci.keys("management.kms.ap-seoul-1.oci.oraclecloud.com");
+
+    let key = keys.get_key("ocid1.key.oc1.ap-seoul-1.example").await?;
+    let rotated = keys.rotate_key("ocid1.key.oc1.ap-seoul-1.example").await?;
+
+    println!("key: {}", key.id);
+    println!("rotated version: {:?}", rotated.current_key_version);
+    Ok(())
+}
+```
+
+Phase 1 scope intentionally focuses on:
+
+- key lookup
+- rotate action
+
+Coolify or other orchestration layers should manage test-runner/container lifecycle only. Secret and key operations should still go through OCI-authenticated API calls via `oci-api`.
+
+<br>
+
+## Smoke Runner Container
+
+This repository also includes a temporary smoke-runner container entrypoint for OCI-hosted validation:
+
+- binary: `smoke_instance_principal`
+- container build: `Dockerfile`
+
+Expected environment variables:
+
+- `OCI_AUTH_MODE=instance_principal`
+- `OCI_REGION`
+- `OCI_TENANCY_ID`
+- `OCI_SMOKE_SECRET_ID` (optional if key smoke is configured)
+- `OCI_SMOKE_SECRET_STAGE` or `OCI_SMOKE_SECRET_VERSION` (optional)
+- `OCI_SMOKE_KMS_MANAGEMENT_ENDPOINT` + `OCI_SMOKE_KEY_ID` (optional pair)
+- `OCI_SMOKE_ROTATE_KEY=true|false` (optional, defaults to `false`)
+- `OCI_SMOKE_KEEP_ALIVE=true|false` (optional, defaults to `true`)
+
+The runner never prints secret values; it only reports metadata such as version, stages, content length, key lifecycle state, and current key version.
+
+<br>
+
 ## Error Handling
 
 The library provides comprehensive error types:
@@ -454,4 +579,3 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 For issues and feature requests, please use [GitHub Issues](https://github.com/GoCoder7/rust-oci-api/issues).
 You can request any OCI APIs, and I will try to implement them as soon as possible.
-

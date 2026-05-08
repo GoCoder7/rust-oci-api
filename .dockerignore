@@ -1,0 +1,10 @@
+target
+.git
+.github
+.idea
+.vscode
+.env
+.env.*
+tests
+tmp
+temp

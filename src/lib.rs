@@ -5,6 +5,7 @@
 //! ## Features
 //!
 //! - Environment variable-based authentication
+//! - Instance principal authentication support
 //! - Email Delivery service support
 //! - Async I/O (tokio)
 //!
@@ -30,12 +31,14 @@ pub mod services;
 pub mod utils;
 
 // Re-exports for convenient imports
-pub use client::Oci;
+pub use client::{AuthMode, Oci, OciBuilder};
 pub use error::{Error, Result};
 
 // Re-export email module to allow `oci_api::email::*` (without `services`)
 pub use services::email;
+pub use services::keys;
 pub use services::object_storage;
+pub use services::vault;
 
 // Re-export async_trait for downstream mock implementations
 pub use async_trait::async_trait;

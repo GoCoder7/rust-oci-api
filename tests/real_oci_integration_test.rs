@@ -64,8 +64,8 @@ async fn test_get_email_configuration() {
     let tenancy_id = oci_client.tenancy_id().to_string();
 
     println!("Config loaded:");
-    println!("  Tenancy: {}", tenancy_id);
-    println!("  Region: {}", oci_client.region());
+    println!("  Tenancy: {tenancy_id}");
+    println!("  Region: {region}", region = oci_client.region());
 
     let email_client = EmailDelivery::new(oci_client)
         .await
@@ -78,18 +78,21 @@ async fn test_get_email_configuration() {
             assert!(!email_config.compartment_id.is_empty());
             assert!(!email_config.http_submit_endpoint.is_empty());
             println!("Email configuration retrieved successfully:");
-            println!("  Compartment ID: {}", email_config.compartment_id);
             println!(
-                "  HTTP Submit Endpoint: {}",
-                email_config.http_submit_endpoint
+                "  Compartment ID: {compartment_id}",
+                compartment_id = email_config.compartment_id
             );
             println!(
-                "  SMTP Submit Endpoint: {}",
-                email_config.smtp_submit_endpoint
+                "  HTTP Submit Endpoint: {http_submit_endpoint}",
+                http_submit_endpoint = email_config.http_submit_endpoint
+            );
+            println!(
+                "  SMTP Submit Endpoint: {smtp_submit_endpoint}",
+                smtp_submit_endpoint = email_config.smtp_submit_endpoint
             );
         }
         Err(e) => {
-            panic!("Failed to get email configuration: {:?}", e);
+            panic!("Failed to get email configuration: {e:?}");
         }
     }
 }
@@ -109,58 +112,6 @@ async fn test_send_full_flow() {
     );
     eprintln!("Use test_send_with_real_sender instead, which auto-detects approved senders.");
     return;
-
-    // Get sender and recipient from env or use defaults for testing
-    let test_sender =
-        std::env::var("TEST_SENDER_EMAIL").unwrap_or_else(|_| "sender@example.com".to_string());
-    let test_recipient = std::env::var("TEST_RECIPIENT_EMAIL")
-        .unwrap_or_else(|_| "recipient@example.com".to_string());
-
-    let oci_client = Oci::from_env().expect("Failed to load config");
-    let tenancy_id = oci_client.tenancy_id().to_string();
-    let email_client = EmailDelivery::new(oci_client)
-        .await
-        .expect("Failed to create EmailDelivery");
-
-    // Create email request
-    let email_request = Email {
-        message_id: None,
-        sender: Sender {
-            sender_address: EmailAddress::with_name(&test_sender, "OCI API Test"),
-            compartment_id: String::new(),
-        },
-        recipients: Recipients::to(vec![EmailAddress::new(&test_recipient)]),
-        subject: "Test Email from OCI API Rust Client".to_string(),
-        body_html: Some(
-            "<html><body>\
-             <h1>Test Email</h1>\
-             <p>This is a test email sent from the OCI API Rust client integration test.</p>\
-             </body></html>"
-                .to_string(),
-        ),
-        body_text: Some(
-            "Test Email\n\nThis is a test email sent from the OCI API Rust client integration test."
-                .to_string(),
-        ),
-        reply_to: None,
-        headers: None,
-    };
-
-    // Submit email
-    let result = email_client.send(email_request).await;
-
-    match result {
-        Ok(response) => {
-            assert!(!response.message_id.is_empty());
-            assert!(!response.envelope_id.is_empty());
-            println!("Email submitted successfully:");
-            println!("  Message ID: {}", response.message_id);
-            println!("  Envelope ID: {}", response.envelope_id);
-        }
-        Err(e) => {
-            panic!("Failed to submit email: {:?}", e);
-        }
-    }
 }
 
 #[tokio::test]
@@ -207,7 +158,7 @@ async fn test_list_senders() {
     let compartment_id =
         std::env::var("OCI_COMPARTMENT_ID").unwrap_or_else(|_| oci_client.tenancy_id().to_string());
 
-    println!("Listing senders in compartment: {}", compartment_id);
+    println!("Listing senders in compartment: {compartment_id}");
 
     let email_client = EmailDelivery::new(oci_client)
         .await
@@ -218,14 +169,21 @@ async fn test_list_senders() {
 
     match result {
         Ok(senders) => {
-            println!("Found {} approved senders:", senders.len());
+            println!(
+                "Found {sender_count} approved senders:",
+                sender_count = senders.len()
+            );
             for sender in &senders {
                 println!(
-                    "  - {} ({:?})",
-                    sender.email_address, sender.lifecycle_state
+                    "  - {email} ({state:?})",
+                    email = sender.email_address,
+                    state = sender.lifecycle_state
                 );
-                println!("    ID: {}", sender.id);
-                println!("    Created: {}", sender.time_created);
+                println!("    ID: {id}", id = sender.id);
+                println!(
+                    "    Created: {time_created}",
+                    time_created = sender.time_created
+                );
             }
 
             // Test: filter by ACTIVE state
@@ -235,7 +193,10 @@ async fn test_list_senders() {
                     .await
                     .expect("Failed to list active senders");
 
-                println!("\nActive senders: {}", active_senders.len());
+                println!(
+                    "\nActive senders: {active_sender_count}",
+                    active_sender_count = active_senders.len()
+                );
                 assert!(
                     active_senders.iter().all(|s| s.lifecycle_state
                         == oci_api::services::email::SenderLifecycleState::Active)
@@ -243,7 +204,7 @@ async fn test_list_senders() {
             }
         }
         Err(e) => {
-            panic!("Failed to list senders: {:?}", e);
+            panic!("Failed to list senders: {e:?}");
         }
     }
 }
@@ -279,7 +240,10 @@ async fn test_send_with_real_sender() {
     }
 
     let approved_sender = &senders[0];
-    println!("Using approved sender: {}", approved_sender.email_address);
+    println!(
+        "Using approved sender: {sender_email}",
+        sender_email = approved_sender.email_address
+    );
 
     // Get recipient from env or use the same sender for testing
     let test_recipient = std::env::var("TEST_RECIPIENT_EMAIL")
@@ -308,12 +272,21 @@ async fn test_send_with_real_sender() {
     match result {
         Ok(response) => {
             println!("✅ Email submitted successfully!");
-            println!("  Message ID: {}", response.message_id);
-            println!("  Envelope ID: {}", response.envelope_id);
+            println!(
+                "  Message ID: {message_id}",
+                message_id = response.message_id
+            );
+            println!(
+                "  Envelope ID: {envelope_id}",
+                envelope_id = response.envelope_id
+            );
             if let Some(ref suppressed) = response.suppressed_recipients {
-                println!("  Suppressed recipients: {} recipients", suppressed.len());
+                println!(
+                    "  Suppressed recipients: {suppressed_count} recipients",
+                    suppressed_count = suppressed.len()
+                );
                 for recipient in suppressed {
-                    println!("    - {}", recipient.email);
+                    println!("    - {email}", email = recipient.email);
                 }
             }
 
@@ -321,7 +294,7 @@ async fn test_send_with_real_sender() {
             assert!(!response.envelope_id.is_empty());
         }
         Err(e) => {
-            panic!("Failed to submit email: {:?}", e);
+            panic!("Failed to submit email: {e:?}");
         }
     }
 }

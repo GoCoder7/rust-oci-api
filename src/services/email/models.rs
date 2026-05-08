@@ -423,9 +423,9 @@ impl EmailBuilder {
             crate::error::Error::ConfigError("Recipients are required".to_string())
         })?;
 
-        let subject = self.subject.ok_or_else(|| {
-            crate::error::Error::ConfigError("Subject is required".to_string())
-        })?;
+        let subject = self
+            .subject
+            .ok_or_else(|| crate::error::Error::ConfigError("Subject is required".to_string()))?;
 
         // Validate that at least one body (HTML or text) is provided
         if self.body_html.is_none() && self.body_text.is_none() {

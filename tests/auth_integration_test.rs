@@ -112,8 +112,6 @@ fn test_config_loader_with_tilde_expansion() {
     let key_content = "-----BEGIN RSA PRIVATE KEY-----\nTEST_KEY\n-----END RSA PRIVATE KEY-----\n";
     key_file.write_all(key_content.as_bytes()).unwrap();
 
-    let home = std::env::var("HOME").unwrap();
-
     // Create INI with absolute path (no tilde)
     let mut ini_file = NamedTempFile::new().unwrap();
     let ini_content = format!(
@@ -179,7 +177,7 @@ fn test_config_with_different_regions() {
             .private_key(TEST_VALID_PEM)
             .expect("Failed to load private key")
             .build()
-            .expect(&format!("Failed to build config for region {}", region));
+            .unwrap_or_else(|_| panic!("Failed to build config for region {region}"));
 
         assert_eq!(oci.region(), region);
     }
@@ -214,10 +212,7 @@ fn test_private_key_formats() {
         .fingerprint("aa:bb:cc:dd")
         .private_key(TEST_VALID_PEM);
 
-    assert!(
-        result.is_ok(),
-        "Failed to load private key with valid PEM"
-    );
+    assert!(result.is_ok(), "Failed to load private key with valid PEM");
 
     let oci = result.unwrap().build();
     assert!(oci.is_ok(), "Failed to build config with valid PEM");
@@ -234,6 +229,9 @@ fn test_private_key_formats() {
     // private_key() method itself might succeed if it just stores the string or does basic validation
     // But build() should fail
     if let Ok(builder) = result {
-        assert!(builder.build().is_err(), "Should fail to build with invalid PEM");
+        assert!(
+            builder.build().is_err(),
+            "Should fail to build with invalid PEM"
+        );
     }
 }

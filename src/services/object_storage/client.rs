@@ -1,13 +1,15 @@
 //! Object Storage client
 
 use crate::client::Oci;
+use crate::client::request_executor::{RequestPayload, RequestTarget};
 use crate::error::{Error, Result};
 use crate::services::object_storage::models::*;
+use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
+use reqwest::Method;
 use serde::Deserialize;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
-use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
-use sha2::{Sha256, Sha384, Digest as ShaDigest};
+use sha2::{Digest as ShaDigest, Sha256, Sha384};
 
 /// Object Storage Service Client
 #[derive(Clone)]
@@ -45,35 +47,23 @@ impl ObjectStorage {
     /// # Arguments
     /// * `bucket_name` - Bucket name
     pub async fn get_bucket(&self, bucket_name: &str) -> Result<Bucket> {
-        // Verify bucket exists
         let path = format!("/n/{}/b/{}/", self.namespace, bucket_name);
-        let url = format!("{}://{}{}", self.protocol, self.endpoint, path);
-
-        let (date_header, auth_header) =
-            self.oci_client
-                .signer()
-                .sign_request("GET", &path, &self.endpoint, None)?;
-
-        let response = self
-            .oci_client
-            .client()
-            .get(&url)
-            .header("host", &self.endpoint)
-            .header("date", &date_header)
-            .header("authorization", &auth_header)
-            .send()
+        self.oci_client
+            .executor()
+            .execute(
+                Method::GET,
+                RequestTarget {
+                    scheme: &self.protocol,
+                    host: &self.endpoint,
+                    path: &path,
+                },
+                RequestPayload {
+                    body: None,
+                    content_type: None,
+                    extra_headers: Vec::new(),
+                },
+            )
             .await?;
-
-        if !response.status().is_success() {
-            let status = response.status();
-            let body = response.text().await?;
-            return Err(Error::ApiError {
-                code: status.to_string(),
-                message: body,
-            });
-        }
-
-        // If successful, return Bucket struct
         Ok(Bucket {
             oci_client: self.oci_client.clone(),
             namespace: self.namespace.clone(),
@@ -100,57 +90,47 @@ pub struct Bucket {
 }
 
 impl Bucket {
+    async fn execute(
+        &self,
+        method: Method,
+        path: &str,
+        body: Option<String>,
+        content_type: Option<&str>,
+        extra_headers: Vec<(String, String)>,
+    ) -> Result<reqwest::Response> {
+        self.oci_client
+            .executor()
+            .execute(
+                method,
+                RequestTarget {
+                    scheme: &self.protocol,
+                    host: &self.endpoint,
+                    path,
+                },
+                RequestPayload {
+                    body,
+                    content_type,
+                    extra_headers,
+                },
+            )
+            .await
+    }
+
     // Helper for making requests
     async fn request<T, B>(&self, method: &str, path: &str, body: Option<B>) -> Result<T>
     where
         T: DeserializeOwned,
         B: Serialize,
     {
-        let url = format!("{}://{}{}", self.protocol, self.endpoint, path);
         let body_str = if let Some(b) = &body {
             Some(serde_json::to_string(b)?)
         } else {
             None
         };
-
-        let (date_header, auth_header) = self.oci_client.signer().sign_request(
-            method,
-            path,
-            &self.endpoint,
-            body_str.as_deref(),
-        )?;
-
-        let mut request_builder = match method {
-            "GET" => self.oci_client.client().get(&url),
-            "POST" => self.oci_client.client().post(&url),
-            "PUT" => self.oci_client.client().put(&url),
-            "DELETE" => self.oci_client.client().delete(&url),
-            _ => return Err(Error::Other(format!("Unsupported method: {}", method))),
-        };
-
-        request_builder = request_builder
-            .header("host", &self.endpoint)
-            .header("date", &date_header)
-            .header("authorization", &auth_header);
-
-        if let Some(b_str) = body_str {
-            request_builder = request_builder
-                .header("content-type", "application/json")
-                .header("content-length", b_str.len().to_string())
-                .body(b_str);
-        }
-
-        let response = request_builder.send().await?;
-
-        if !response.status().is_success() {
-            let status = response.status();
-            let body = response.text().await?;
-            return Err(Error::ApiError {
-                code: status.to_string(),
-                message: body,
-            });
-        }
-
+        let method = parse_method(method)?;
+        let response = self
+            .execute(method, path, body_str, Some("application/json"), Vec::new())
+            .await?;
         let text = response.text().await?;
         serde_json::from_str(&text).map_err(Into::into)
     }
@@ -159,51 +139,14 @@ impl Bucket {
     where
         B: Serialize,
     {
-        let url = format!("{}://{}{}", self.protocol, self.endpoint, path);
         let body_str = if let Some(b) = &body {
             Some(serde_json::to_string(b)?)
         } else {
             None
         };
-
-        let (date_header, auth_header) = self.oci_client.signer().sign_request(
-            method,
-            path,
-            &self.endpoint,
-            body_str.as_deref(),
-        )?;
-
-        let mut request_builder = match method {
-            "GET" => self.oci_client.client().get(&url),
-            "POST" => self.oci_client.client().post(&url),
-            "PUT" => self.oci_client.client().put(&url),
-            "DELETE" => self.oci_client.client().delete(&url),
-            _ => return Err(Error::Other(format!("Unsupported method: {}", method))),
-        };
-
-        request_builder = request_builder
-            .header("host", &self.endpoint)
-            .header("date", &date_header)
-            .header("authorization", &auth_header);
-
-        if let Some(b_str) = body_str {
-            request_builder = request_builder
-                .header("content-type", "application/json")
-                .header("content-length", b_str.len().to_string())
-                .body(b_str);
-        }
-
-        let response = request_builder.send().await?;
-
-        if !response.status().is_success() {
-            let status = response.status();
-            let body = response.text().await?;
-            return Err(Error::ApiError {
-                code: status.to_string(),
-                message: body,
-            });
-        }
-
+        let method = parse_method(method)?;
+        self.execute(method, path, body_str, Some("application/json"), Vec::new())
+            .await?;
         Ok(())
     }
 
@@ -228,7 +171,8 @@ impl Bucket {
         content: &str,
         algorithm: ChecksumAlgorithm,
     ) -> Result<Object> {
-        self.put_object_internal(object_name, content, Some(algorithm)).await
+        self.put_object_internal(object_name, content, Some(algorithm))
+            .await
     }
 
     async fn put_object_internal(
@@ -238,21 +182,7 @@ impl Bucket {
         algorithm: Option<ChecksumAlgorithm>,
     ) -> Result<Object> {
         let path = format!("/n/{}/b/{}/o/{}", self.namespace, self.name, object_name);
-        let url = format!("{}://{}{}", self.protocol, self.endpoint, path);
-
-        let (date_header, auth_header) =
-            self.oci_client
-                .signer()
-                .sign_request("PUT", &path, &self.endpoint, Some(content))?;
-
-        let mut request_builder = self
-            .oci_client
-            .client()
-            .put(&url)
-            .header("host", &self.endpoint)
-            .header("date", &date_header)
-            .header("authorization", &auth_header)
-            .header("content-length", content.len().to_string());
+        let mut extra_headers = Vec::new();
 
         if let Some(algo) = algorithm {
             let data = content.as_bytes();
@@ -262,44 +192,36 @@ impl Bucket {
                     hasher.update(data);
                     let result = hasher.finalize();
                     let b64 = BASE64.encode(result);
-                    request_builder = request_builder
-                        .header("opc-checksum-algorithm", "SHA256")
-                        .header("opc-content-sha256", b64);
+                    extra_headers.push(("opc-checksum-algorithm".to_owned(), "SHA256".to_owned()));
+                    extra_headers.push(("opc-content-sha256".to_owned(), b64));
                 }
                 ChecksumAlgorithm::SHA384 => {
                     let mut hasher = Sha384::new();
                     hasher.update(data);
                     let result = hasher.finalize();
                     let b64 = BASE64.encode(result);
-                    request_builder = request_builder
-                        .header("opc-checksum-algorithm", "SHA384")
-                        .header("opc-content-sha384", b64);
+                    extra_headers.push(("opc-checksum-algorithm".to_owned(), "SHA384".to_owned()));
+                    extra_headers.push(("opc-content-sha384".to_owned(), b64));
                 }
                 ChecksumAlgorithm::CRC32C => {
                     let crc = crc32c::crc32c(data);
                     let bytes = crc.to_be_bytes();
                     let b64 = BASE64.encode(bytes);
-                    request_builder = request_builder
-                        .header("opc-checksum-algorithm", "CRC32C")
-                        .header("opc-content-crc32c", b64);
+                    extra_headers.push(("opc-checksum-algorithm".to_owned(), "CRC32C".to_owned()));
+                    extra_headers.push(("opc-content-crc32c".to_owned(), b64));
                 }
             }
         }
 
-        let response = request_builder
-            .body(content.to_string())
-            .send()
+        let response = self
+            .execute(
+                Method::PUT,
+                &path,
+                Some(content.to_owned()),
+                Some("application/octet-stream"),
+                extra_headers,
+            )
             .await?;
-
-        if !response.status().is_success() {
-            let status = response.status();
-            let body = response.text().await?;
-            return Err(Error::ApiError {
-                code: status.to_string(),
-                message: body,
-            });
-        }
-
         let headers = response.headers();
         let md5 = headers
             .get("opc-content-md5")
@@ -309,17 +231,26 @@ impl Bucket {
 
         let mut checksum = None;
 
-        if let Some(val) = headers.get("opc-content-sha256").and_then(|h| h.to_str().ok()) {
+        if let Some(val) = headers
+            .get("opc-content-sha256")
+            .and_then(|h| h.to_str().ok())
+        {
             checksum = Some(Checksum {
                 algorithm: ChecksumAlgorithm::SHA256,
                 value: val.to_string(),
             });
-        } else if let Some(val) = headers.get("opc-content-sha384").and_then(|h| h.to_str().ok()) {
+        } else if let Some(val) = headers
+            .get("opc-content-sha384")
+            .and_then(|h| h.to_str().ok())
+        {
             checksum = Some(Checksum {
                 algorithm: ChecksumAlgorithm::SHA384,
                 value: val.to_string(),
             });
-        } else if let Some(val) = headers.get("opc-content-crc32c").and_then(|h| h.to_str().ok()) {
+        } else if let Some(val) = headers
+            .get("opc-content-crc32c")
+            .and_then(|h| h.to_str().ok())
+        {
             checksum = Some(Checksum {
                 algorithm: ChecksumAlgorithm::CRC32C,
                 value: val.to_string(),
@@ -340,31 +271,9 @@ impl Bucket {
     /// * `object_name` - Object name
     pub async fn get_object(&self, object_name: &str) -> Result<Object> {
         let path = format!("/n/{}/b/{}/o/{}", self.namespace, self.name, object_name);
-        let url = format!("{}://{}{}", self.protocol, self.endpoint, path);
-
-        let (date_header, auth_header) =
-            self.oci_client
-                .signer()
-                .sign_request("GET", &path, &self.endpoint, None)?;
-
         let response = self
-            .oci_client
-            .client()
-            .get(&url)
-            .header("host", &self.endpoint)
-            .header("date", &date_header)
-            .header("authorization", &auth_header)
-            .send()
+            .execute(Method::GET, &path, None, None, Vec::new())
             .await?;
-
-        if !response.status().is_success() {
-            let status = response.status();
-            let body = response.text().await?;
-            return Err(Error::ApiError {
-                code: status.to_string(),
-                message: body,
-            });
-        }
 
         let headers = response.headers();
         let md5 = headers
@@ -376,17 +285,26 @@ impl Bucket {
 
         let mut checksum = None;
 
-        if let Some(val) = headers.get("opc-content-sha256").and_then(|h| h.to_str().ok()) {
+        if let Some(val) = headers
+            .get("opc-content-sha256")
+            .and_then(|h| h.to_str().ok())
+        {
             checksum = Some(Checksum {
                 algorithm: ChecksumAlgorithm::SHA256,
                 value: val.to_string(),
             });
-        } else if let Some(val) = headers.get("opc-content-sha384").and_then(|h| h.to_str().ok()) {
+        } else if let Some(val) = headers
+            .get("opc-content-sha384")
+            .and_then(|h| h.to_str().ok())
+        {
             checksum = Some(Checksum {
                 algorithm: ChecksumAlgorithm::SHA384,
                 value: val.to_string(),
             });
-        } else if let Some(val) = headers.get("opc-content-crc32c").and_then(|h| h.to_str().ok()) {
+        } else if let Some(val) = headers
+            .get("opc-content-crc32c")
+            .and_then(|h| h.to_str().ok())
+        {
             checksum = Some(Checksum {
                 algorithm: ChecksumAlgorithm::CRC32C,
                 value: val.to_string(),
@@ -476,6 +394,11 @@ impl Bucket {
         );
         self.request_no_content("DELETE", &path, None::<()>).await
     }
+}
+
+fn parse_method(method: &str) -> Result<Method> {
+    Method::from_bytes(method.as_bytes())
+        .map_err(|e| Error::Other(format!("Unsupported method {method}: {e}")))
 }
 
 #[cfg(test)]

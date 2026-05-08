@@ -53,9 +53,7 @@ impl ConfigLoader {
 
         // Find profile section
         let section = ini.section(Some(profile_name)).ok_or_else(|| {
-            Error::ConfigError(format!(
-                "Profile '{profile_name}' not found in INI content"
-            ))
+            Error::ConfigError(format!("Profile '{profile_name}' not found in INI content"))
         })?;
 
         // Read and build config
@@ -75,9 +73,9 @@ impl ConfigLoader {
             .map_err(|e| Error::IniError(format!("Failed to load INI file: {e}")))?;
 
         // Find profile section
-        let section = ini.section(Some(profile_name)).ok_or_else(|| {
-            Error::ConfigError(format!("Profile '{profile_name}' not found"))
-        })?;
+        let section = ini
+            .section(Some(profile_name))
+            .ok_or_else(|| Error::ConfigError(format!("Profile '{profile_name}' not found")))?;
 
         // Read and build config
         Self::build_config_from_section(section)
@@ -103,16 +101,14 @@ impl ConfigLoader {
 
         let fingerprint = section
             .get("fingerprint")
-            .ok_or_else(|| {
-                Error::ConfigError("fingerprint field not found in config".to_string())
-            })?
+            .ok_or_else(|| Error::ConfigError("fingerprint field not found in config".to_string()))?
             .to_string();
 
         // key_file is required for traditional config file loading
         // If key_file is missing, the caller must provide private_key separately
-        let key_file = section.get("key_file").ok_or_else(|| {
-            Error::ConfigError("key_file field not found in config".to_string())
-        })?;
+        let key_file = section
+            .get("key_file")
+            .ok_or_else(|| Error::ConfigError("key_file field not found in config".to_string()))?;
 
         // Load private key from key_file path
         // Note: key_file in OCI config typically uses paths like ~/...
@@ -152,9 +148,9 @@ impl ConfigLoader {
         };
 
         let profile_name = "DEFAULT";
-        let section = ini.section(Some(profile_name)).ok_or_else(|| {
-            Error::ConfigError(format!("Profile '{profile_name}' not found"))
-        })?;
+        let section = ini
+            .section(Some(profile_name))
+            .ok_or_else(|| Error::ConfigError(format!("Profile '{profile_name}' not found")))?;
 
         // Extract only the fields that are present
         Ok(PartialOciConfig {

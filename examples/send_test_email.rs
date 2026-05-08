@@ -30,7 +30,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     let approved_sender = &senders[0];
-    println!("✉️  Using sender: {}\n", approved_sender.email_address);
+    println!(
+        "✉️  Using sender: {sender_email}\n",
+        sender_email = approved_sender.email_address
+    );
 
     // Build email content using builder pattern
     let email = Email::builder()
@@ -98,14 +101,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     match email_client.send(email).await {
         Ok(response) => {
             println!("\n✅ Email sent successfully!");
-            println!("📨 Message ID: {}", response.message_id);
-            println!("📮 Envelope ID: {}", response.envelope_id);
+            println!(
+                "📨 Message ID: {message_id}",
+                message_id = response.message_id
+            );
+            println!(
+                "📮 Envelope ID: {envelope_id}",
+                envelope_id = response.envelope_id
+            );
 
             if let Some(suppressed) = response.suppressed_recipients {
                 if !suppressed.is_empty() {
                     println!("\n⚠️  Note: Some recipients were suppressed:");
                     for recipient in suppressed {
-                        println!("   - {}", recipient.email);
+                        println!("   - {email}", email = recipient.email);
                     }
                 }
             }
@@ -113,7 +122,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             println!("\n💌 Check go@gocoder.xyz inbox!");
         }
         Err(e) => {
-            eprintln!("\n❌ Failed to send email: {}", e);
+            eprintln!("\n❌ Failed to send email: {e}");
             return Err(e.into());
         }
     }

@@ -51,8 +51,8 @@
 
 use async_trait::async_trait;
 
-use crate::error::Result;
 use super::models::{Email, SubmitEmailResponse};
+use crate::error::Result;
 
 /// 이메일 전송 추상화 trait.
 ///

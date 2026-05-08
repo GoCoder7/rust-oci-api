@@ -1,9 +1,11 @@
 //! Email client
 
 use async_trait::async_trait;
+use reqwest::Method;
 
 use crate::client::Oci;
-use crate::error::{Error, Result};
+use crate::client::request_executor::{RequestPayload, RequestTarget};
+use crate::error::Result;
 use crate::services::email::models::*;
 use crate::services::email::sender_trait::EmailSender;
 
@@ -45,35 +47,24 @@ impl EmailDelivery {
         compartment_id: &str,
         region: &str,
     ) -> Result<EmailConfiguration> {
-        // Build path with query string
         let path = format!("/20170907/configuration?compartmentId={compartment_id}");
         let host = format!("ctrl.email.{region}.oci.oraclecloud.com");
-        let url = format!("https://{host}{path}");
-
-        // Sign request
-        let (date_header, auth_header) = oci_client
-            .signer()
-            .sign_request("GET", &path, &host, None)?;
-
-        // Build and execute request
         let response = oci_client
-            .client()
-            .get(&url)
-            .header("host", &host)
-            .header("date", &date_header)
-            .header("authorization", &auth_header)
-            .send()
+            .executor()
+            .execute(
+                Method::GET,
+                RequestTarget {
+                    scheme: "https",
+                    host: &host,
+                    path: &path,
+                },
+                RequestPayload {
+                    body: None,
+                    content_type: None,
+                    extra_headers: Vec::new(),
+                },
+            )
             .await?;
-
-        if !response.status().is_success() {
-            let status = response.status();
-            let body = response.text().await?;
-            return Err(Error::ApiError {
-                code: status.to_string(),
-                message: body,
-            });
-        }
-
         response.json().await.map_err(Into::into)
     }
 
@@ -111,57 +102,26 @@ impl EmailDelivery {
             email.sender.set_compartment_id(&compartment_id);
         }
 
-        // Build path and URL
         let path = "/20220926/actions/submitEmail";
-        let url = format!("https://{}{}", &self.submit_endpoint, path);
-
-        // Serialize JSON body
         let body_json = serde_json::to_string(&email)?;
-
-        // Calculate body SHA256 for x-content-sha256 header
-        let body_sha256 = {
-            use base64::{Engine, engine::general_purpose};
-            use sha2::{Digest, Sha256};
-            let mut hasher = Sha256::new();
-            hasher.update(body_json.as_bytes());
-            let result = hasher.finalize();
-            general_purpose::STANDARD.encode(result)
-        };
-
-        // Sign request (with body)
-        let (date_header, auth_header) = self.oci_client.signer().sign_request(
-            "POST",
-            path,
-            &self.submit_endpoint,
-            Some(&body_json),
-        )?;
-
-        // Build and execute request
         let response = self
             .oci_client
-            .client()
-            .post(&url)
-            .header("host", &self.submit_endpoint)
-            .header("date", &date_header)
-            .header("authorization", &auth_header)
-            .header("content-type", "application/json")
-            .header("content-length", body_json.len().to_string())
-            .header("x-content-sha256", &body_sha256)
-            .body(body_json)
-            .send()
+            .executor()
+            .execute(
+                Method::POST,
+                RequestTarget {
+                    scheme: "https",
+                    host: &self.submit_endpoint,
+                    path,
+                },
+                RequestPayload {
+                    body: Some(body_json),
+                    content_type: Some("application/json"),
+                    extra_headers: Vec::new(),
+                },
+            )
             .await?;
-
-        if !response.status().is_success() {
-            let status = response.status();
-            let body = response.text().await?;
-            return Err(Error::ApiError {
-                code: status.to_string(),
-                message: body,
-            });
-        }
-
-        let submit_response: SubmitEmailResponse = response.json().await?;
-        Ok(submit_response)
+        response.json().await.map_err(Into::into)
     }
 
     /// List approved senders
@@ -195,36 +155,24 @@ impl EmailDelivery {
             "ctrl.email.{}.oci.oraclecloud.com",
             self.oci_client.region()
         );
-        let url = format!("https://{host}{path}");
-
-        // Sign request
-        let (date_header, auth_header) = self
-            .oci_client
-            .signer()
-            .sign_request("GET", &path, &host, None)?;
-
-        // Build and execute request
         let response = self
             .oci_client
-            .client()
-            .get(&url)
-            .header("host", &host)
-            .header("date", &date_header)
-            .header("authorization", &auth_header)
-            .send()
+            .executor()
+            .execute(
+                Method::GET,
+                RequestTarget {
+                    scheme: "https",
+                    host: &host,
+                    path: &path,
+                },
+                RequestPayload {
+                    body: None,
+                    content_type: None,
+                    extra_headers: Vec::new(),
+                },
+            )
             .await?;
-
-        if !response.status().is_success() {
-            let status = response.status();
-            let body = response.text().await?;
-            return Err(Error::ApiError {
-                code: status.to_string(),
-                message: body,
-            });
-        }
-
-        let senders: Vec<SenderSummary> = response.json().await?;
-        Ok(senders)
+        response.json().await.map_err(Into::into)
     }
 }
 

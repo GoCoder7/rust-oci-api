@@ -5,8 +5,6 @@
 //! 2. Automatically deleted when Oci is dropped
 
 use oci_api::client::Oci;
-use std::path::PathBuf;
-use std::sync::{Arc, Mutex};
 
 /// Test PEM content
 const TEST_PEM: &str = r#"-----BEGIN PRIVATE KEY-----
@@ -41,10 +39,6 @@ Ae/wEOcaaJD3g0i9hhz8Blf4IA==
 #[test]
 fn test_temp_file_is_created_and_deleted() {
     println!("\n=== Test: Temporary file creation and cleanup ===\n");
-
-    // Track the temp file path
-    let temp_file_path: Arc<Mutex<Option<PathBuf>>> = Arc::new(Mutex::new(None));
-    let path_clone = Arc::clone(&temp_file_path);
 
     // Scope for Oci
     {
@@ -173,12 +167,12 @@ fn test_pem_content_detection() {
 
     // This might succeed or fail depending on file existence, but should not crash
     println!(
-        "✓ Client creation attempted with file path (result: {})",
-        if result2.is_ok() { "ok" } else { "err" }
+        "✓ Client creation attempted with file path (result: {result})",
+        result = if result2.is_ok() { "ok" } else { "err" }
     );
 
     // Test 3: PEM with leading whitespace
-    let pem_with_whitespace = format!("  \n\n{}", TEST_PEM);
+    let pem_with_whitespace = format!("  \n\n{TEST_PEM}");
     println!("Test 3: PEM with leading whitespace");
     let result3 = Oci::builder()
         .user_id("ocid1.user.oc1..test")

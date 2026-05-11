@@ -5,7 +5,8 @@
 use crate::auth::config_loader::ConfigLoader;
 use crate::auth::key_loader::KeyLoader;
 use crate::auth::providers::{
-    ApiKeyAuthProvider, DynOciAuthProvider, InstancePrincipalAuthProvider, InstancePrincipalConfig,
+    ApiKeyAuthProvider, DEFAULT_METADATA_BASE_URL, DEFAULT_REALM_DOMAIN_COMPONENT,
+    DynOciAuthProvider, InstancePrincipalAuthProvider, InstancePrincipalConfig,
 };
 use crate::client::request_executor::RequestExecutor;
 use crate::client::signer::OciSigner;
@@ -32,6 +33,9 @@ pub struct Oci {
 
     /// Region
     region: String,
+
+    /// Realm domain component
+    realm_domain_component: String,
 
     /// Tenancy ID
     tenancy_id: String,
@@ -147,22 +151,55 @@ impl Oci {
     }
 
     fn from_instance_principal_env() -> Result<Self> {
-        let region = env::var("OCI_REGION").map_err(|_| {
-            Error::EnvError(
-                "OCI_REGION must be set when OCI_AUTH_MODE=instance_principal".to_owned(),
-            )
-        })?;
-        let tenancy_id = env::var("OCI_TENANCY_ID").map_err(|_| {
-            Error::EnvError(
-                "OCI_TENANCY_ID must be set when OCI_AUTH_MODE=instance_principal".to_owned(),
-            )
-        })?;
+        let metadata_client = reqwest::blocking::Client::new();
         let metadata_base_url = env::var("OCI_METADATA_BASE_URL").ok();
+        let metadata_region_info = InstancePrincipalAuthProvider::metadata_region_info_blocking(
+            &metadata_client,
+            metadata_base_url
+                .as_deref()
+                .unwrap_or(DEFAULT_METADATA_BASE_URL),
+        )
+        .ok();
+        let region = env::var("OCI_REGION")
+            .ok()
+            .or_else(|| {
+                metadata_region_info
+                    .as_ref()
+                    .map(|region_info| region_info.region_identifier.clone())
+            })
+            .ok_or_else(|| {
+                Error::EnvError(
+                    "OCI_REGION must be set or discoverable from OCI metadata when OCI_AUTH_MODE=instance_principal"
+                        .to_owned(),
+                )
+            })?;
+        let tenancy_id = env::var("OCI_TENANCY_ID")
+            .ok()
+            .or_else(|| {
+                InstancePrincipalAuthProvider::tenancy_id_from_metadata_certificate_blocking(
+                    &metadata_client,
+                    metadata_base_url
+                        .as_deref()
+                        .unwrap_or(DEFAULT_METADATA_BASE_URL),
+                )
+                .ok()
+            })
+            .ok_or_else(|| {
+                Error::EnvError(
+                    "OCI_TENANCY_ID must be set or discoverable from OCI metadata when OCI_AUTH_MODE=instance_principal"
+                        .to_owned(),
+                )
+            })?;
         let compartment_id = env::var("OCI_COMPARTMENT_ID").ok();
+        let realm_domain_component = metadata_region_info
+            .as_ref()
+            .map(|region_info| region_info.realm_domain_component.clone())
+            .unwrap_or_else(|| DEFAULT_REALM_DOMAIN_COMPONENT.to_owned());
 
         let mut builder = Self::builder()
             .auth_mode(AuthMode::InstancePrincipal)
             .region(region)
+            .realm_domain_component(realm_domain_component)
             .tenancy_id(tenancy_id)
             .compartment_id_opt(compartment_id);
         if let Some(metadata_base_url) = metadata_base_url {
@@ -195,6 +232,11 @@ impl Oci {
     /// Return region
     pub fn region(&self) -> &str {
         &self.region
+    }
+
+    /// Return realm domain component
+    pub fn realm_domain(&self) -> &str {
+        &self.realm_domain_component
     }
 
     /// Return tenancy ID
@@ -238,6 +280,7 @@ pub struct OciBuilder {
     user_id: Option<String>,
     tenancy_id: Option<String>,
     region: Option<String>,
+    realm_domain_component: Option<String>,
     fingerprint: Option<String>,
     private_key: Option<String>,
     compartment_id: Option<String>,
@@ -279,6 +322,11 @@ impl OciBuilder {
         self
     }
 
+    pub fn realm_domain_component(mut self, realm_domain_component: impl Into<String>) -> Self {
+        self.realm_domain_component = Some(realm_domain_component.into());
+        self
+    }
+
     pub fn fingerprint(mut self, fingerprint: impl Into<String>) -> Self {
         self.fingerprint = Some(fingerprint.into());
         self
@@ -314,6 +362,9 @@ impl OciBuilder {
         let region = self
             .region
             .ok_or_else(|| Error::ConfigError("region is not set".to_string()))?;
+        let realm_domain_component = self
+            .realm_domain_component
+            .unwrap_or_else(|| DEFAULT_REALM_DOMAIN_COMPONENT.to_owned());
         let client = Client::builder().build()?;
 
         let (signer, auth_provider) = match self.auth_mode {
@@ -335,9 +386,11 @@ impl OciBuilder {
             AuthMode::InstancePrincipal => {
                 let config = if let Some(metadata_base_url) = self.metadata_base_url {
                     InstancePrincipalConfig::new(region.clone(), tenancy_id.clone())
+                        .realm_domain_component(realm_domain_component.clone())
                         .metadata_base_url(metadata_base_url)
                 } else {
                     InstancePrincipalConfig::new(region.clone(), tenancy_id.clone())
+                        .realm_domain_component(realm_domain_component.clone())
                 };
                 let provider = Arc::new(InstancePrincipalAuthProvider::new(client.clone(), config))
                     as DynOciAuthProvider;
@@ -348,6 +401,7 @@ impl OciBuilder {
         Ok(Oci {
             client,
             region,
+            realm_domain_component,
             tenancy_id,
             compartment_id: self.compartment_id,
             signer,
@@ -360,5 +414,111 @@ impl OciBuilder {
 impl Default for AuthMode {
     fn default() -> Self {
         Self::ApiKey
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use mockito::Server;
+    use serial_test::serial;
+
+    const TENANT_CERT_PEM: &str = "-----BEGIN CERTIFICATE-----\n\
+MIIDXzCCAkegAwIBAgIUONFqOCNE1N3Aps1ZQaPpY7SQzngwDQYJKoZIhvcNAQEL\n\
+BQAwPzEuMCwGA1UECgwlb3BjLXRlbmFudDpvY2lkMS50ZW5hbnR5Lm9jMS4uZXhh\n\
+bXBsZTENMAsGA1UEAwwEdGVzdDAeFw0yNjA1MTEwNjQ1NTFaFw0yNjA1MTIwNjQ1\n\
+NTFaMD8xLjAsBgNVBAoMJW9wYy10ZW5hbnQ6b2NpZDEudGVuYW5jeS5vYzEuLmV4\n\
+YW1wbGUxDTALBgNVBAMMBHRlc3QwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEK\n\
+AoIBAQDMblfnza9gqREWumv1mTJbR939nQIYZUynTxusVBXciNRjKaqB0jFSUFg9\n\
+E2pwtr7G/zr6rpIum9yaRT3O/hhIACP7CJvOoIPTV8qDmNcRnlT78nWBN8jnma1A\n\
+T9AZhtR14BJVe03eSSHBTnIDNNDQZu1+p6hUiGPVG1xe/F3/HOwbUrxzsChDnliZ\n\
+C46FL0JMIu/uH/Q/iSg0wYsJQKzE+iIvLo5edTeaTvdaTth8XLmltWM2DEwC/fyU\n\
+D2lxoOmvBhCVl1OCvT3Db0hMXRVV79BAXNS+qUyKbWnAgkiAMDGmEtYzizAoqCl4\n\
+GpDeqNfSI/xo8Zt1RqU1PgleQslDAgMBAAGjUzBRMB0GA1UdDgQWBBRnTn//hXKL\n\
+fWGEt7RY27CGihg+DjAfBgNVHSMEGDAWgBRnTn//hXKLfWGEt7RY27CGihg+DjAP\n\
+BgNVHRMBAf8EBTADAQH/MA0GCSqGSIb3DQEBCwUAA4IBAQAwRR1OsfwCP1UF4PWK\n\
+jQLcBHrwEL7q9/HG47G6IsD4YN365ZPKzv7cOVzL7sPXVs18f3XDZwVNhwMiP2lo\n\
+ShLlHDIog2ZMD0kppoZlwf1EdbVVOr30qtHaRpd1/YHY1omuUCdis51iJzO/wMwL\n\
+m3yCFx7OCb46vCHwWc+CwiF9I9HKFMJyVpmhsEw91EPH3JaHWW1wn/RSIXuWpX0Q\n\
+t+CmwNhI9TC99JL2cfr5lFUjA8nQ5Xx68L9gyfQZ2aicx5XD+s+nt0mgc06oOWv3\n\
+ubYEGH/Vy8oK3rEoKdcNVdZUTgA0Fs2g+ItlrBFsJl5A1/TP3f0fbV6j9eY2SpdB\n\
+Eo34\n\
+-----END CERTIFICATE-----\n";
+
+    struct EnvGuard {
+        saved: Vec<(&'static str, Option<String>)>,
+    }
+
+    impl EnvGuard {
+        fn new(keys: &[&'static str]) -> Self {
+            Self {
+                saved: keys.iter().map(|key| (*key, env::var(key).ok())).collect(),
+            }
+        }
+
+        fn set(&self, key: &'static str, value: Option<&str>) {
+            unsafe {
+                match value {
+                    Some(value) => env::set_var(key, value),
+                    None => env::remove_var(key),
+                }
+            }
+        }
+    }
+
+    impl Drop for EnvGuard {
+        fn drop(&mut self) {
+            for (key, value) in &self.saved {
+                unsafe {
+                    match value {
+                        Some(value) => env::set_var(key, value),
+                        None => env::remove_var(key),
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    #[serial]
+    fn from_instance_principal_env_uses_metadata_region_info_when_bootstrap_envs_are_missing() {
+        let mut server = Server::new();
+        let _region_info = server
+            .mock("GET", "/opc/v2/instance/regionInfo")
+            .match_header("authorization", "Bearer Oracle")
+            .with_status(200)
+            .with_body(
+                r#"{"realmKey":"oc1","realmDomainComponent":"oraclecloud.com","regionKey":"PHX","regionIdentifier":"us-phoenix-1"}"#,
+            )
+            .create();
+        let _leaf_cert = server
+            .mock("GET", "/opc/v2/identity/cert.pem")
+            .match_header("authorization", "Bearer Oracle")
+            .with_status(200)
+            .with_body(TENANT_CERT_PEM)
+            .create();
+
+        let guard = EnvGuard::new(&[
+            "OCI_AUTH_MODE",
+            "OCI_REGION",
+            "OCI_TENANCY_ID",
+            "OCI_METADATA_BASE_URL",
+            "OCI_COMPARTMENT_ID",
+        ]);
+        guard.set("OCI_AUTH_MODE", Some("instance_principal"));
+        guard.set("OCI_REGION", None);
+        guard.set("OCI_TENANCY_ID", None);
+        guard.set(
+            "OCI_METADATA_BASE_URL",
+            Some(&format!("{}/opc/v2", server.url())),
+        );
+        guard.set("OCI_COMPARTMENT_ID", None);
+
+        let oci = Oci::from_env().unwrap();
+
+        assert_eq!(oci.region(), "us-phoenix-1");
+        assert_eq!(oci.realm_domain(), "oraclecloud.com");
+        assert_eq!(oci.tenancy_id(), "ocid1.tenancy.oc1..example");
     }
 }

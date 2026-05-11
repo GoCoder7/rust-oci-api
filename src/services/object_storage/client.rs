@@ -32,7 +32,7 @@ impl ObjectStorage {
     /// * `namespace` - Object Storage Namespace
     pub fn new(oci_client: &Oci, namespace: impl Into<String>) -> Self {
         let region = oci_client.region().to_string();
-        let endpoint = format!("objectstorage.{region}.oraclecloud.com");
+        let endpoint = format!("objectstorage.{region}.{}", oci_client.realm_domain());
 
         Self {
             oci_client: oci_client.clone(),

@@ -136,8 +136,6 @@ When running on OCI infrastructure, switch to Instance Principal mode:
 
 ```bash
 OCI_AUTH_MODE=instance_principal
-OCI_REGION=ap-seoul-1
-OCI_TENANCY_ID=ocid1.tenancy.oc1..aaaaaa...
 
 # optional: override metadata endpoint for local mock tests
 OCI_METADATA_BASE_URL=http://169.254.169.254/opc/v2
@@ -152,8 +150,11 @@ assert_eq!(oci.auth_mode(), oci_api::client::AuthMode::InstancePrincipal);
 
 Notes:
 
-- `OCI_REGION` and `OCI_TENANCY_ID` stay explicit even in Instance Principal mode.
+- `OCI_REGION` and `OCI_TENANCY_ID` are optional in Instance Principal mode when OCI metadata is available.
+- `OCI_REGION` is discovered from IMDS `regionInfo` and uses the canonical region identifier rather than the short-code-prone plain-text region endpoint.
+- `OCI_TENANCY_ID` is discovered from the leaf identity certificate subject (`opc-tenant:` with `opc-identity:` fallback).
 - The security token and session key are fetched lazily on the first signed request and refreshed automatically before expiry.
+- Auth/service endpoint construction is realm-aware and uses the metadata-provided realm domain component.
 - Local validation should use a mocked metadata/federation flow; end-to-end validation still requires an OCI-hosted runtime.
 
 ### Option 2: Programmatic Configuration
@@ -524,8 +525,7 @@ This repository also includes a temporary smoke-runner container entrypoint for 
 Expected environment variables:
 
 - `OCI_AUTH_MODE=instance_principal`
-- `OCI_REGION`
-- `OCI_TENANCY_ID`
+- `OCI_METADATA_BASE_URL` (optional override for local/mock tests)
 - `OCI_SMOKE_SECRET_ID` (optional if key smoke is configured)
 - `OCI_SMOKE_SECRET_STAGE` or `OCI_SMOKE_SECRET_VERSION` (optional)
 - `OCI_SMOKE_KMS_MANAGEMENT_ENDPOINT` + `OCI_SMOKE_KEY_ID` (optional pair)

@@ -5,7 +5,7 @@ use async_trait::async_trait;
 use base64::{
     Engine as _, engine::general_purpose::STANDARD, engine::general_purpose::URL_SAFE_NO_PAD,
 };
-use reqwest::Client;
+use reqwest::{Client, blocking::Client as BlockingClient};
 use rsa::RsaPrivateKey;
 use rsa::pkcs8::{DecodePrivateKey, EncodePrivateKey, EncodePublicKey, LineEnding};
 use rsa::rand_core::OsRng;
@@ -13,23 +13,36 @@ use serde::Deserialize;
 use sha1::Sha1;
 use sha2::Digest;
 use tokio::sync::Mutex;
+use x509_parser::{parse_x509_certificate, pem::parse_x509_pem};
 
 use crate::auth::providers::{OciAuthProvider, SignRequest, SignedHeaders};
 use crate::client::signer::OciSigner;
 use crate::error::{Error, Result};
 
-const DEFAULT_METADATA_BASE_URL: &str = "http://169.254.169.254/opc/v2";
+pub(crate) const DEFAULT_METADATA_BASE_URL: &str = "http://169.254.169.254/opc/v2";
+pub(crate) const DEFAULT_REALM_DOMAIN_COMPONENT: &str = "oraclecloud.com";
 const METADATA_AUTHORIZATION: &str = "Bearer Oracle";
-const REGION_PATH: &str = "/instance/region";
+const REGION_INFO_PATH: &str = "/instance/regionInfo";
 const LEAF_CERTIFICATE_PATH: &str = "/identity/cert.pem";
 const LEAF_PRIVATE_KEY_PATH: &str = "/identity/key.pem";
 const INTERMEDIATE_CERTIFICATE_PATH: &str = "/identity/intermediate.pem";
 const DEFAULT_REFRESH_WINDOW_SECS: u64 = 300;
+const TENANCY_PREFIX: &str = "opc-tenant:";
+const IDENTITY_PREFIX: &str = "opc-identity:";
+
+#[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
+pub struct MetadataRegionInfo {
+    #[serde(rename = "regionIdentifier")]
+    pub region_identifier: String,
+    #[serde(rename = "realmDomainComponent")]
+    pub realm_domain_component: String,
+}
 
 #[derive(Debug, Clone)]
 pub struct InstancePrincipalConfig {
     pub region: String,
     pub tenancy_id: String,
+    pub realm_domain_component: String,
     pub metadata_base_url: String,
     pub refresh_window: Duration,
     pub auth_scheme: String,
@@ -41,6 +54,7 @@ impl InstancePrincipalConfig {
         Self {
             region: region.into(),
             tenancy_id: tenancy_id.into(),
+            realm_domain_component: DEFAULT_REALM_DOMAIN_COMPONENT.to_owned(),
             metadata_base_url: DEFAULT_METADATA_BASE_URL.to_owned(),
             refresh_window: Duration::from_secs(DEFAULT_REFRESH_WINDOW_SECS),
             auth_scheme: "https".to_owned(),
@@ -50,6 +64,11 @@ impl InstancePrincipalConfig {
 
     pub fn metadata_base_url(mut self, metadata_base_url: impl Into<String>) -> Self {
         self.metadata_base_url = metadata_base_url.into();
+        self
+    }
+
+    pub fn realm_domain_component(mut self, realm_domain_component: impl Into<String>) -> Self {
+        self.realm_domain_component = realm_domain_component.into();
         self
     }
 
@@ -225,8 +244,16 @@ impl InstancePrincipalAuthProvider {
     }
 
     pub async fn metadata_region(client: &Client, metadata_base_url: &str) -> Result<String> {
+        let region_info = Self::metadata_region_info(client, metadata_base_url).await?;
+        Ok(region_info.region_identifier)
+    }
+
+    pub async fn metadata_region_info(
+        client: &Client,
+        metadata_base_url: &str,
+    ) -> Result<MetadataRegionInfo> {
         let response = client
-            .get(format!("{metadata_base_url}{REGION_PATH}"))
+            .get(format!("{metadata_base_url}{REGION_INFO_PATH}"))
             .header("authorization", METADATA_AUTHORIZATION)
             .send()
             .await?;
@@ -240,14 +267,68 @@ impl InstancePrincipalAuthProvider {
             });
         }
 
-        response.text().await.map_err(Into::into)
+        response.json().await.map_err(Into::into)
+    }
+
+    pub(crate) fn metadata_region_info_blocking(
+        client: &BlockingClient,
+        metadata_base_url: &str,
+    ) -> Result<MetadataRegionInfo> {
+        let response = client
+            .get(format!("{metadata_base_url}{REGION_INFO_PATH}"))
+            .header("authorization", METADATA_AUTHORIZATION)
+            .send()?;
+
+        if !response.status().is_success() {
+            let status = response.status();
+            let body = response.text()?;
+            return Err(Error::ApiError {
+                code: status.to_string(),
+                message: body,
+            });
+        }
+
+        response.json().map_err(Into::into)
+    }
+
+    pub(crate) fn tenancy_id_from_metadata_certificate_blocking(
+        client: &BlockingClient,
+        metadata_base_url: &str,
+    ) -> Result<String> {
+        let certificate_pem =
+            Self::metadata_text_blocking(client, metadata_base_url, LEAF_CERTIFICATE_PATH)?;
+        tenancy_id_from_certificate(&certificate_pem)
+    }
+
+    fn metadata_text_blocking(
+        client: &BlockingClient,
+        metadata_base_url: &str,
+        path: &str,
+    ) -> Result<String> {
+        let response = client
+            .get(format!("{metadata_base_url}{path}"))
+            .header("authorization", METADATA_AUTHORIZATION)
+            .send()?;
+
+        if !response.status().is_success() {
+            let status = response.status();
+            let body = response.text()?;
+            return Err(Error::ApiError {
+                code: status.to_string(),
+                message: body,
+            });
+        }
+
+        response.text().map_err(Into::into)
     }
 
     fn auth_host(&self) -> String {
-        self.config
-            .auth_host_override
-            .clone()
-            .unwrap_or_else(|| format!("auth.{}.oraclecloud.com", self.config.region))
+        self.config.auth_host_override.clone().unwrap_or_else(|| {
+            format!(
+                "auth.{}.{}",
+                self.config.region, self.config.realm_domain_component
+            )
+        })
     }
 }
 
@@ -337,12 +418,81 @@ fn jwt_expiration(token: &str) -> Result<SystemTime> {
     Ok(UNIX_EPOCH + Duration::from_secs(exp))
 }
 
+fn tenancy_id_from_certificate(certificate_pem: &str) -> Result<String> {
+    let (_, pem) = parse_x509_pem(certificate_pem.as_bytes())
+        .map_err(|e| Error::AuthError(format!("Failed to parse certificate PEM: {e}")))?;
+    let (_, certificate) = parse_x509_certificate(&pem.contents)
+        .map_err(|e| Error::AuthError(format!("Failed to parse certificate DER: {e}")))?;
+
+    let mut fallback: Option<String> = None;
+    for attribute in certificate.subject().iter_attributes() {
+        let value = attribute
+            .as_str()
+            .map_err(|e| Error::AuthError(format!("Failed to decode certificate subject: {e}")))?;
+        if let Some(tenancy_id) = value.strip_prefix(TENANCY_PREFIX) {
+            return Ok(tenancy_id.to_owned());
+        }
+        if let Some(tenancy_id) = value.strip_prefix(IDENTITY_PREFIX) {
+            fallback = Some(tenancy_id.to_owned());
+        }
+    }
+
+    fallback.ok_or_else(|| {
+        Error::AuthError(
+            "Certificate subject does not contain an opc-tenant or opc-identity value".to_owned(),
+        )
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     use mockito::{Matcher, Server};
     use rsa::pkcs8::EncodePrivateKey;
+
+    const TENANT_CERT_PEM: &str = "-----BEGIN CERTIFICATE-----\n\
+MIIDXzCCAkegAwIBAgIUONFqOCNE1N3Aps1ZQaPpY7SQzngwDQYJKoZIhvcNAQEL\n\
+BQAwPzEuMCwGA1UECgwlb3BjLXRlbmFudDpvY2lkMS50ZW5hbnR5Lm9jMS4uZXhh\n\
+bXBsZTENMAsGA1UEAwwEdGVzdDAeFw0yNjA1MTEwNjQ1NTFaFw0yNjA1MTIwNjQ1\n\
+NTFaMD8xLjAsBgNVBAoMJW9wYy10ZW5hbnQ6b2NpZDEudGVuYW5jeS5vYzEuLmV4\n\
+YW1wbGUxDTALBgNVBAMMBHRlc3QwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEK\n\
+AoIBAQDMblfnza9gqREWumv1mTJbR939nQIYZUynTxusVBXciNRjKaqB0jFSUFg9\n\
+E2pwtr7G/zr6rpIum9yaRT3O/hhIACP7CJvOoIPTV8qDmNcRnlT78nWBN8jnma1A\n\
+T9AZhtR14BJVe03eSSHBTnIDNNDQZu1+p6hUiGPVG1xe/F3/HOwbUrxzsChDnliZ\n\
+C46FL0JMIu/uH/Q/iSg0wYsJQKzE+iIvLo5edTeaTvdaTth8XLmltWM2DEwC/fyU\n\
+D2lxoOmvBhCVl1OCvT3Db0hMXRVV79BAXNS+qUyKbWnAgkiAMDGmEtYzizAoqCl4\n\
+GpDeqNfSI/xo8Zt1RqU1PgleQslDAgMBAAGjUzBRMB0GA1UdDgQWBBRnTn//hXKL\n\
+fWGEt7RY27CGihg+DjAfBgNVHSMEGDAWgBRnTn//hXKLfWGEt7RY27CGihg+DjAP\n\
+BgNVHRMBAf8EBTADAQH/MA0GCSqGSIb3DQEBCwUAA4IBAQAwRR1OsfwCP1UF4PWK\n\
+jQLcBHrwEL7q9/HG47G6IsD4YN365ZPKzv7cOVzL7sPXVs18f3XDZwVNhwMiP2lo\n\
+ShLlHDIog2ZMD0kppoZlwf1EdbVVOr30qtHaRpd1/YHY1omuUCdis51iJzO/wMwL\n\
+m3yCFx7OCb46vCHwWc+CwiF9I9HKFMJyVpmhsEw91EPH3JaHWW1wn/RSIXuWpX0Q\n\
+t+CmwNhI9TC99JL2cfr5lFUjA8nQ5Xx68L9gyfQZ2aicx5XD+s+nt0mgc06oOWv3\n\
+ubYEGH/Vy8oK3rEoKdcNVdZUTgA0Fs2g+ItlrBFsJl5A1/TP3f0fbV6j9eY2SpdB\n\
+Eo34\n\
+-----END CERTIFICATE-----\n";
+    const IDENTITY_CERT_PEM: &str = "-----BEGIN CERTIFICATE-----\n\
+MIIDZTCCAk2gAwIBAgIUMOZAko5vvssEkoQ2WHQPY7f9x7gwDQYJKoZIhvcNAQEL\n\
+BQAwQjExMC8GA1UECgwob3BjLWlkZW50aXR5Om9jaWQxLnRlbmFuY3kub2MxLi5m\n\
+YWxsYmFjazENMAsGA1UEAwwEdGVzdDAeFw0yNjA1MTEwNjQ1NTFaFw0yNjA1MTIw\n\
+NjQ1NTFaMEIxMTAvBgNVBAoMKG9wYy1pZGVudGl0eTpvY2lkMS50ZW5hbmN5Lm9j\n\
+MS4uZmFsbGJhY2sxDTALBgNVBAMMBHRlc3QwggEiMA0GCSqGSIb3DQEBAQUAA4IB\n\
+DwAwggEKAoIBAQDmduilwMQ6tEwB/vyl2mtYWJ3H08t444tmq2vxpFl4XUlPT4S4\n\
+A3tdME87tmZdC0e4f5lUnEo+ZVO9H2pXdPP6pD0sBdvPxJ/FBZtTCCQiA4p9TSVR\n\
+grBXJFd9sNGff7Og6HVdWlTt0fj0K3MlBxg4Tae3+Dzlt7qOJ5xE88Fwh5agOxbS\n\
+vvHwKmAOkW47ArK/cIBv8LzJotINAdMhKykBuFRxc9WwIUWSbNQvYYeFu3YD3Ny1\n\
+v8qwbYPVC2HU/3M8SJmQmAbDgWFw1onqWk94fzoVenwdb7uS7fJtkjf7MppyMtx0\n\
+PhgPTt6al22K6sJvKOlN/lkFQ1DwzQqpPYNFAgMBAAGjUzBRMB0GA1UdDgQWBBRe\n\
+VO8o3p/eN6Qak29wCTCQAAnxqTAfBgNVHSMEGDAWgBReVO8o3p/eN6Qak29wCTCQ\n\
+AAnxqTAPBgNVHRMBAf8EBTADAQH/MA0GCSqGSIb3DQEBCwUAA4IBAQBCg/E2AjS7\n\
+cMz1GMGEy9zmpJ1OhD0lksrPHZpfp/LyfCiI677HSIKlBxCKjq720CZM5jAqw8eU\n\
+CsLG8fqtBqOmc6lH/h+3LjGMQsnTjNW7e9sX3rzOyfGblrOX+cVpYYXjUVxtJwS3\n\
+p62tIXpRa/waFgKfYyFv3QHFK//QW1ZVeklnIVJ1sTLgMfRmf6inGp51R5x/aclY\n\
+WdHlZRZUqf8KtLhLE+yevBpZh9YRvfIWvCYoNU4PF6c5XhPo6Q1jqzYKwkxVAKvR\n\
+Sp5TG8PoJmFKTSFP71z+N5kIy2Ez7h1YjBfU+46dGJMuIOAdF7fttUj4wjtd0xo8\n\
+tOmUqakVOgtb\n\
+-----END CERTIFICATE-----\n";
 
     fn test_private_key_pem() -> String {
         RsaPrivateKey::new(&mut OsRng, 2048)
@@ -374,10 +524,12 @@ mod tests {
     async fn test_metadata_region_fetches_imds_value() {
         let mut server = Server::new_async().await;
         let _mock = server
-            .mock("GET", "/opc/v2/instance/region")
+            .mock("GET", "/opc/v2/instance/regionInfo")
             .match_header("authorization", METADATA_AUTHORIZATION)
             .with_status(200)
-            .with_body("ap-seoul-1")
+            .with_body(
+                r#"{"realmKey":"oc1","realmDomainComponent":"oraclecloud.com","regionKey":"ICN","regionIdentifier":"ap-seoul-1"}"#,
+            )
             .create_async()
             .await;
 
@@ -389,6 +541,42 @@ mod tests {
         .unwrap();
 
         assert_eq!(region, "ap-seoul-1");
+    }
+
+    #[tokio::test]
+    async fn test_metadata_region_info_fetches_realm_domain() {
+        let mut server = Server::new_async().await;
+        let _mock = server
+            .mock("GET", "/opc/v2/instance/regionInfo")
+            .match_header("authorization", METADATA_AUTHORIZATION)
+            .with_status(200)
+            .with_body(
+                r#"{"realmKey":"oc2","realmDomainComponent":"oraclegovcloud.com","regionKey":"IAD","regionIdentifier":"us-langley-1"}"#,
+            )
+            .create_async()
+            .await;
+
+        let region_info = InstancePrincipalAuthProvider::metadata_region_info(
+            &Client::new(),
+            &format!("{}/opc/v2", server.url()),
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(region_info.region_identifier, "us-langley-1");
+        assert_eq!(region_info.realm_domain_component, "oraclegovcloud.com");
+    }
+
+    #[test]
+    fn test_tenancy_id_from_certificate_prefers_opc_tenant_prefix() {
+        let tenancy_id = tenancy_id_from_certificate(TENANT_CERT_PEM).unwrap();
+        assert_eq!(tenancy_id, "ocid1.tenancy.oc1..example");
+    }
+
+    #[test]
+    fn test_tenancy_id_from_certificate_falls_back_to_opc_identity_prefix() {
+        let tenancy_id = tenancy_id_from_certificate(IDENTITY_CERT_PEM).unwrap();
+        assert_eq!(tenancy_id, "ocid1.tenancy.oc1..fallback");
     }
 
     #[tokio::test]

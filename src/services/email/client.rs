@@ -48,7 +48,7 @@ impl EmailDelivery {
         region: &str,
     ) -> Result<EmailConfiguration> {
         let path = format!("/20170907/configuration?compartmentId={compartment_id}");
-        let host = format!("ctrl.email.{region}.oci.oraclecloud.com");
+        let host = format!("ctrl.email.{region}.oci.{}", oci_client.realm_domain());
         let response = oci_client
             .executor()
             .execute(
@@ -152,8 +152,9 @@ impl EmailDelivery {
         let query_string = query_params.join("&");
         let path = format!("/20170907/senders?{query_string}");
         let host = format!(
-            "ctrl.email.{}.oci.oraclecloud.com",
-            self.oci_client.region()
+            "ctrl.email.{}.oci.{}",
+            self.oci_client.region(),
+            self.oci_client.realm_domain()
         );
         let response = self
             .oci_client

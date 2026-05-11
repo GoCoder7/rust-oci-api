@@ -13,7 +13,11 @@ pub struct VaultSecretsClient {
 
 impl VaultSecretsClient {
     pub fn new(oci_client: &Oci) -> Self {
-        let endpoint = format!("secrets.vaults.{}.oci.oraclecloud.com", oci_client.region());
+        let endpoint = format!(
+            "secrets.vaults.{}.oci.{}",
+            oci_client.region(),
+            oci_client.realm_domain()
+        );
         Self {
             oci_client: oci_client.clone(),
             endpoint,

@@ -10,6 +10,7 @@ use rsa::RsaPrivateKey;
 use rsa::pkcs8::{DecodePrivateKey, EncodePrivateKey, EncodePublicKey, LineEnding};
 use rsa::rand_core::OsRng;
 use serde::Deserialize;
+use sha1::Sha1;
 use sha2::Digest;
 use tokio::sync::Mutex;
 
@@ -119,7 +120,7 @@ impl InstancePrincipalAuthProvider {
         let session_public_key = session_public_key_pem(&session_private_key_pem)?;
 
         let auth_key_id = format!(
-            "{}/fed-x509-sha256/{}",
+            "{}/fed-x509/{}",
             self.config.tenancy_id,
             certificate_fingerprint(&metadata.leaf_certificate)?
         );
@@ -129,7 +130,6 @@ impl InstancePrincipalAuthProvider {
             "certificate": sanitize_pem_body(&metadata.leaf_certificate),
             "publicKey": sanitize_pem_body(&session_public_key),
             "intermediateCertificates": [sanitize_pem_body(&metadata.intermediate_certificate)],
-            "fingerprintAlgorithm": "SHA256",
         });
         let body_json = serde_json::to_string(&request_body)?;
         let path = "/v1/x509";
@@ -137,7 +137,7 @@ impl InstancePrincipalAuthProvider {
         let signed = auth_signer.sign_request_headers(
             "POST",
             path,
-            Some(&host),
+            None,
             Some(&body_json),
             Some("application/json"),
             None,
@@ -146,7 +146,6 @@ impl InstancePrincipalAuthProvider {
         let response = self
             .client
             .post(format!("{}://{host}{path}", self.config.auth_scheme))
-            .header("host", &host)
             .header("date", &signed.date)
             .header("authorization", &signed.authorization)
             .header(
@@ -296,8 +295,12 @@ fn certificate_fingerprint(certificate_pem: &str) -> Result<String> {
     let der = STANDARD
         .decode(der_body)
         .map_err(|e| Error::AuthError(format!("Failed to decode certificate: {e}")))?;
-    let digest = sha2::Sha256::digest(der);
-    Ok(digest.iter().map(|byte| format!("{byte:02x}")).collect())
+    let digest = Sha1::digest(der);
+    Ok(digest
+        .iter()
+        .map(|byte| format!("{byte:02X}"))
+        .collect::<Vec<_>>()
+        .join(":"))
 }
 
 fn new_session_private_key_pem() -> Result<String> {
@@ -431,10 +434,13 @@ mod tests {
         let auth_host = strip_http_scheme(&auth_server.url());
         let _auth = auth_server
             .mock("POST", "/v1/x509")
-            .match_header("host", auth_host.as_str())
             .match_header(
                 "content-type",
                 Matcher::Regex("application/json".to_owned()),
+            )
+            .match_header(
+                "authorization",
+                Matcher::Regex(r#"keyId="ocid1\.tenancy\.oc1\.\.example/fed-x509/"#.to_owned()),
             )
             .expect(1)
             .with_status(200)

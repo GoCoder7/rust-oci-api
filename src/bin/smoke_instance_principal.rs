@@ -32,7 +32,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     if secret_id.is_none() && (kms_endpoint.is_none() || key_id.is_none()) {
         println!("no smoke targets configured yet");
         if keep_alive {
-            return serve_healthcheck("awaiting smoke target configuration").await;
+            return serve_healthcheck("awaiting smoke target configuration", 200).await;
         }
         return Err(
             "set OCI_SMOKE_SECRET_ID and/or OCI_SMOKE_KMS_MANAGEMENT_ENDPOINT + OCI_SMOKE_KEY_ID"
@@ -40,9 +40,48 @@ async fn main() -> Result<(), Box<dyn Error>> {
         );
     }
 
-    if let Some(secret_id) = secret_id.as_deref() {
+    let smoke_result = run_smoke(
+        &oci,
+        secret_id.as_deref(),
+        secret_stage.as_deref(),
+        secret_version,
+        kms_endpoint.as_deref(),
+        key_id.as_deref(),
+        rotate_key,
+    )
+    .await;
+
+    match smoke_result {
+        Ok(()) => {
+            println!("OCI smoke runner finished successfully");
+            if keep_alive {
+                return serve_healthcheck("smoke runner ready", 200).await;
+            }
+        }
+        Err(error) => {
+            eprintln!("OCI smoke runner failed: {error}");
+            if keep_alive {
+                return serve_healthcheck("smoke runner failed", 500).await;
+            }
+            return Err(error);
+        }
+    }
+
+    Ok(())
+}
+
+async fn run_smoke(
+    oci: &Oci,
+    secret_id: Option<&str>,
+    secret_stage: Option<&str>,
+    secret_version: Option<i64>,
+    kms_endpoint: Option<&str>,
+    key_id: Option<&str>,
+    rotate_key: bool,
+) -> Result<(), Box<dyn Error>> {
+    if let Some(secret_id) = secret_id {
         let vault = oci.vault();
-        let bundle = match (secret_stage.as_deref(), secret_version) {
+        let bundle = match (secret_stage, secret_version) {
             (_, Some(version_number)) => {
                 println!("reading versioned secret bundle");
                 vault
@@ -70,7 +109,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         println!("secret content length: {}", decoded.len());
     }
 
-    if let (Some(kms_endpoint), Some(key_id)) = (kms_endpoint.as_deref(), key_id.as_deref()) {
+    if let (Some(kms_endpoint), Some(key_id)) = (kms_endpoint, key_id) {
         let keys = oci.keys(kms_endpoint);
         let key = keys.get_key(key_id).await?;
         println!("key lookup ok");
@@ -85,17 +124,16 @@ async fn main() -> Result<(), Box<dyn Error>> {
         }
     }
 
-    println!("OCI smoke runner finished successfully");
-
-    if keep_alive {
-        return serve_healthcheck("smoke runner ready").await;
-    }
-
     Ok(())
 }
 
-async fn serve_healthcheck(status: &str) -> Result<(), Box<dyn Error>> {
+async fn serve_healthcheck(status: &str, status_code: u16) -> Result<(), Box<dyn Error>> {
     let listener = TcpListener::bind("0.0.0.0:8080").await?;
+    let reason_phrase = match status_code {
+        200 => "OK",
+        500 => "Internal Server Error",
+        _ => "OK",
+    };
     println!("health endpoint listening on 0.0.0.0:8080");
     println!("health status: {status}");
 
@@ -103,7 +141,7 @@ async fn serve_healthcheck(status: &str) -> Result<(), Box<dyn Error>> {
         let (mut socket, _) = listener.accept().await?;
         let body = format!("{{\"status\":\"{status}\"}}");
         let response = format!(
-            "HTTP/1.1 200 OK\r\ncontent-type: application/json\r\ncontent-length: {}\r\nconnection: close\r\n\r\n{}",
+            "HTTP/1.1 {status_code} {reason_phrase}\r\ncontent-type: application/json\r\ncontent-length: {}\r\nconnection: close\r\n\r\n{}",
             body.len(),
             body
         );

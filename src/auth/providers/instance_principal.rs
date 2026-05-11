@@ -137,7 +137,7 @@ impl InstancePrincipalAuthProvider {
         let signed = auth_signer.sign_request_headers(
             "POST",
             path,
-            None,
+            Some(&host),
             Some(&body_json),
             Some("application/json"),
             None,
@@ -146,6 +146,7 @@ impl InstancePrincipalAuthProvider {
         let response = self
             .client
             .post(format!("{}://{host}{path}", self.config.auth_scheme))
+            .header("host", &host)
             .header("date", &signed.date)
             .header("authorization", &signed.authorization)
             .header(
@@ -427,8 +428,10 @@ mod tests {
         let token = test_jwt(exp);
 
         let mut auth_server = Server::new_async().await;
+        let auth_host = strip_http_scheme(&auth_server.url());
         let _auth = auth_server
             .mock("POST", "/v1/x509")
+            .match_header("host", auth_host.as_str())
             .match_header(
                 "content-type",
                 Matcher::Regex("application/json".to_owned()),
@@ -444,7 +447,7 @@ mod tests {
             InstancePrincipalConfig::new("ap-seoul-1", "ocid1.tenancy.oc1..example")
                 .metadata_base_url(format!("{}/opc/v2", metadata_server.url()))
                 .auth_scheme("http")
-                .auth_host_override(strip_http_scheme(&auth_server.url()))
+                .auth_host_override(auth_host)
                 .refresh_window(Duration::from_secs(60)),
         );
 

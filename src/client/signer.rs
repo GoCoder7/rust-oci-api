@@ -6,10 +6,12 @@
 use crate::error::{Error, Result};
 use base64::{Engine as _, engine::general_purpose};
 use rsa::RsaPrivateKey;
+use rsa::pkcs1::DecodeRsaPrivateKey;
 use rsa::pkcs1v15::SigningKey;
 use rsa::pkcs8::DecodePrivateKey;
 use rsa::signature::{SignatureEncoding, Signer as RsaSigner};
 use sha2::Sha256;
+use std::fs;
 use std::sync::Arc;
 
 /// Signed headers produced by request signing.
@@ -198,13 +200,24 @@ impl OciSigner {
 fn load_private_key(private_key: &str) -> Result<RsaPrivateKey> {
     let is_pem_content = private_key.contains("-----BEGIN") && private_key.contains("-----END");
 
-    if is_pem_content {
-        RsaPrivateKey::from_pkcs8_pem(private_key)
-            .map_err(|e| Error::ConfigError(format!("Failed to parse private key: {e}")))
+    let pem_content = if is_pem_content {
+        private_key.to_owned()
     } else {
-        RsaPrivateKey::read_pkcs8_pem_file(private_key)
-            .map_err(|e| Error::ConfigError(format!("Failed to read private key from file: {e}")))
-    }
+        fs::read_to_string(private_key)
+            .map_err(|e| Error::ConfigError(format!("Failed to read private key from file: {e}")))?
+    };
+
+    parse_private_key_pem(&pem_content)
+}
+
+fn parse_private_key_pem(private_key_pem: &str) -> Result<RsaPrivateKey> {
+    RsaPrivateKey::from_pkcs8_pem(private_key_pem).or_else(|pkcs8_error| {
+        RsaPrivateKey::from_pkcs1_pem(private_key_pem).map_err(|pkcs1_error| {
+            Error::ConfigError(format!(
+                "Failed to parse private key: {pkcs8_error}; PKCS#1 fallback also failed: {pkcs1_error}"
+            ))
+        })
+    })
 }
 
 fn sign_request_headers(
@@ -278,6 +291,9 @@ fn sign_request_headers(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use rsa::pkcs1::EncodeRsaPrivateKey;
+    use rsa::pkcs8::{EncodePrivateKey, LineEnding};
+    use rsa::rand_core::OsRng;
 
     #[test]
     fn test_signer_creation_with_pem_content() {
@@ -304,5 +320,38 @@ oF0r7fLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL
     fn test_signing_string_format_without_body() {
         // We can't test actual signing without a valid key,
         // but we can verify the signing string format in integration tests
+    }
+
+    #[test]
+    fn test_signer_accepts_pkcs1_pem_content() {
+        let private_key = RsaPrivateKey::new(&mut OsRng, 2048).unwrap();
+        let pkcs1_pem = private_key.to_pkcs1_pem(LineEnding::LF).unwrap();
+
+        let result = OciSigner::new(
+            "ocid1.user.oc1..test",
+            "ocid1.tenancy.oc1..test",
+            "aa:bb:cc:dd:ee:ff",
+            pkcs1_pem.as_str(),
+        );
+
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_signer_accepts_pkcs8_pem_file_path() {
+        let private_key = RsaPrivateKey::new(&mut OsRng, 2048).unwrap();
+        let pkcs8_pem = private_key.to_pkcs8_pem(LineEnding::LF).unwrap();
+        let temp_dir = tempfile::tempdir().unwrap();
+        let key_path = temp_dir.path().join("key.pem");
+        fs::write(&key_path, pkcs8_pem.as_bytes()).unwrap();
+
+        let result = OciSigner::new(
+            "ocid1.user.oc1..test",
+            "ocid1.tenancy.oc1..test",
+            "aa:bb:cc:dd:ee:ff",
+            key_path.to_str().unwrap(),
+        );
+
+        assert!(result.is_ok());
     }
 }

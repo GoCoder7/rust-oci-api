@@ -15,7 +15,7 @@ impl KeysClient {
     pub fn new(oci_client: &Oci, management_endpoint: impl Into<String>) -> Self {
         Self {
             oci_client: oci_client.clone(),
-            management_endpoint: management_endpoint.into(),
+            management_endpoint: normalize_management_endpoint(&management_endpoint.into()),
         }
     }
 
@@ -61,5 +61,29 @@ impl KeysClient {
             )
             .await?;
         response.json().await.map_err(Into::into)
+    }
+}
+
+fn normalize_management_endpoint(management_endpoint: &str) -> String {
+    management_endpoint
+        .trim()
+        .trim_start_matches("https://")
+        .trim_start_matches("http://")
+        .trim_end_matches('/')
+        .to_owned()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::normalize_management_endpoint;
+
+    #[test]
+    fn test_normalize_management_endpoint_strips_scheme_and_trailing_slash() {
+        assert_eq!(
+            normalize_management_endpoint(
+                "https://example-management.kms.ap-chuncheon-1.oci.oraclecloud.com/"
+            ),
+            "example-management.kms.ap-chuncheon-1.oci.oraclecloud.com"
+        );
     }
 }

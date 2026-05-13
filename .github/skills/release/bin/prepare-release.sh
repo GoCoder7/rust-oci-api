@@ -64,6 +64,7 @@ if ! git -C "$repo_root" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
 fi
 
 cargo_toml="$repo_root/Cargo.toml"
+lock_file="$repo_root/Cargo.lock"
 readme_file="$repo_root/README.md"
 changelog_file="$repo_root/CHANGELOG.md"
 
@@ -150,6 +151,12 @@ commit_created="false"
 version_already_prepared="false"
 changelog_has_entry="false"
 readme_version_updated="false"
+lockfile_present="false"
+lockfile_updated="false"
+
+if [[ -f "$lock_file" ]]; then
+  lockfile_present="true"
+fi
 
 if grep -q "\[$next_version\]" "$changelog_file"; then
   changelog_has_entry="true"
@@ -173,6 +180,12 @@ if [[ "$dry_run" == "false" ]]; then
       readme_version_updated="true"
     fi
 
+    if [[ "$lockfile_present" == "true" ]]; then
+      (cd "$repo_root" && cargo check --quiet >/dev/null)
+      lockfile_updated="true"
+      git -C "$repo_root" add Cargo.lock
+    fi
+
     git -C "$repo_root" add Cargo.toml README.md
     git -C "$repo_root" commit -m "$commit_message" >/dev/null
     commit_created="true"
@@ -182,7 +195,7 @@ if [[ "$dry_run" == "false" ]]; then
   commit_sha="$(git -C "$repo_root" rev-parse HEAD)"
 fi
 
-PREPARE_OUTPUT="$release_info" CURRENT_BRANCH="$current_branch" DRY_RUN="$dry_run" COMMIT_MESSAGE="$commit_message" COMMIT_SHA="$commit_sha" COMMIT_CREATED="$commit_created" VERSION_ALREADY_PREPARED="$version_already_prepared" CHANGELOG_HAS_ENTRY="$changelog_has_entry" README_VERSION_UPDATED="$readme_version_updated" REPO_ROOT="$repo_root" README_VERSION_BEFORE="$readme_version" node <<'NODE'
+PREPARE_OUTPUT="$release_info" CURRENT_BRANCH="$current_branch" DRY_RUN="$dry_run" COMMIT_MESSAGE="$commit_message" COMMIT_SHA="$commit_sha" COMMIT_CREATED="$commit_created" VERSION_ALREADY_PREPARED="$version_already_prepared" CHANGELOG_HAS_ENTRY="$changelog_has_entry" README_VERSION_UPDATED="$readme_version_updated" LOCKFILE_PRESENT="$lockfile_present" LOCKFILE_UPDATED="$lockfile_updated" REPO_ROOT="$repo_root" README_VERSION_BEFORE="$readme_version" node <<'NODE'
 const info = JSON.parse(process.env.PREPARE_OUTPUT);
 const output = {
   repoRoot: process.env.REPO_ROOT,
@@ -197,6 +210,8 @@ const output = {
   nextVersion: info.nextVersion,
   tag: info.tag,
   changelogHasEntry: process.env.CHANGELOG_HAS_ENTRY === 'true',
+  lockfilePresent: process.env.LOCKFILE_PRESENT === 'true',
+  lockfileUpdated: process.env.LOCKFILE_UPDATED === 'true',
   commitMessage: process.env.COMMIT_MESSAGE,
   commitSha: process.env.COMMIT_SHA || null,
   commitCreated: process.env.COMMIT_CREATED === 'true',

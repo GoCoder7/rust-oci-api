@@ -38,6 +38,7 @@ It follows the same staged release style used in the `flow` and
 - `.github/skills/release/bin/prepare-release.sh`
 - `.github/skills/release/bin/push-release.sh`
 - `Cargo.toml`
+- `Cargo.lock`
 - `README.md`
 - `CHANGELOG.md`
 
@@ -87,7 +88,8 @@ bash ./.github/skills/release/bin/prepare-release.sh --repo-root . --bump patch 
   - current `Cargo.toml` version,
   - current README install-snippet version if present,
   - computed next version,
-  - whether `Cargo.toml` and the README install snippet will need a version bump,
+  - whether `Cargo.toml`, `Cargo.lock` (if tracked), and the README install
+    snippet will need a version bump,
   - whether version drift exists,
   - whether the changelog already contains an entry for the target version,
   - whether the version is already prepared locally.
@@ -100,8 +102,9 @@ bash ./.github/skills/release/bin/prepare-release.sh --repo-root . --bump patch 
 bash ./.github/skills/release/bin/prepare-release.sh --repo-root . --bump patch
 ```
 
-- This helper updates `Cargo.toml` and the README install-snippet version
-  together when the next release version is not already prepared.
+- This helper updates `Cargo.toml`, `Cargo.lock` (if tracked), and the README
+  install-snippet version together when the next release version is not already
+  prepared.
 - If `CHANGELOG.md` does not yet contain the target release entry, stop and
   update it before rerunning the prepare step.
 - Read the JSON result and report:
@@ -111,6 +114,7 @@ bash ./.github/skills/release/bin/prepare-release.sh --repo-root . --bump patch
   - previous crate version,
   - previous README install-snippet version,
   - next version,
+  - whether `Cargo.lock` was updated as part of the release prepare,
   - whether a new release commit was created or the current `HEAD` was reused.
 
 ### 6. Publish Only After Explicit Approval

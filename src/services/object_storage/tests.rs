@@ -1,5 +1,5 @@
 use super::ObjectStorage;
-use crate::client::Oci;
+use crate::client::{AuthMode, Oci};
 use mockito::Server;
 
 fn create_test_client() -> Oci {
@@ -41,6 +41,38 @@ vc2NfetOo+tuZADstuyzwGC9
         .expect("Failed to load private key")
         .build()
         .unwrap()
+}
+
+fn create_instance_principal_test_client(region: &str, realm_domain_component: &str) -> Oci {
+    Oci::builder()
+        .auth_mode(AuthMode::InstancePrincipal)
+        .tenancy_id("ocid1.tenancy.oc1..test")
+        .region(region)
+        .realm_domain_component(realm_domain_component)
+        .build()
+        .unwrap()
+}
+
+#[test]
+fn test_instance_principal_endpoint_uses_commercial_realm() {
+    let oci_client = create_instance_principal_test_client("ap-chuncheon-1", "oraclecloud.com");
+    let os_client = ObjectStorage::new(&oci_client, "test_namespace");
+
+    assert_eq!(
+        os_client.endpoint,
+        "objectstorage.ap-chuncheon-1.oraclecloud.com"
+    );
+}
+
+#[test]
+fn test_instance_principal_endpoint_uses_gov_realm() {
+    let oci_client = create_instance_principal_test_client("us-langley-1", "oraclegovcloud.com");
+    let os_client = ObjectStorage::new(&oci_client, "test_namespace");
+
+    assert_eq!(
+        os_client.endpoint,
+        "objectstorage.us-langley-1.oraclegovcloud.com"
+    );
 }
 
 #[tokio::test]

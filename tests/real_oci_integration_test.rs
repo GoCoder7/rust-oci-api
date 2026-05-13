@@ -6,18 +6,20 @@
 //! cargo test --test real_oci_integration_test -- --ignored
 //! ```
 //!
-//! Required environment variables:
-//! - OCI_USER_ID
-//! - OCI_TENANCY_ID
-//! - OCI_REGION
-//! - OCI_FINGERPRINT
-//! - OCI_PRIVATE_KEY (file path or PEM content)
+//! Required authentication:
+//! - `OCI_AUTH_MODE=api_key` with `OCI_USER_ID`, `OCI_TENANCY_ID`, `OCI_REGION`,
+//!   `OCI_FINGERPRINT`, `OCI_PRIVATE_KEY`
+//! - or `OCI_AUTH_MODE=instance_principal` on an OCI runtime where IMDS is reachable
+//!
+//! Additional optional environment variables:
 //! - OCI_COMPARTMENT_ID (optional, defaults to tenancy ID)
 //! - TEST_SENDER_EMAIL (optional, for email tests)
 //! - TEST_RECIPIENT_EMAIL (optional, for email tests)
 
 use oci_api::client::Oci;
 use oci_api::services::email::{Email, EmailAddress, EmailDelivery, Recipients, Sender};
+use std::net::{SocketAddr, TcpStream};
+use std::time::Duration;
 
 /// Load .env file if it exists
 fn load_env() {
@@ -27,11 +29,25 @@ fn load_env() {
 /// Helper to check if OCI credentials are configured
 fn has_oci_credentials() -> bool {
     load_env();
-    std::env::var("OCI_USER_ID").is_ok()
-        && std::env::var("OCI_TENANCY_ID").is_ok()
-        && std::env::var("OCI_REGION").is_ok()
-        && std::env::var("OCI_FINGERPRINT").is_ok()
-        && std::env::var("OCI_PRIVATE_KEY").is_ok()
+    match std::env::var("OCI_AUTH_MODE")
+        .unwrap_or_else(|_| "api_key".to_owned())
+        .as_str()
+    {
+        "instance_principal" => is_imds_reachable(),
+        "api_key" => {
+            std::env::var("OCI_USER_ID").is_ok()
+                && std::env::var("OCI_TENANCY_ID").is_ok()
+                && std::env::var("OCI_REGION").is_ok()
+                && std::env::var("OCI_FINGERPRINT").is_ok()
+                && std::env::var("OCI_PRIVATE_KEY").is_ok()
+        }
+        _ => false,
+    }
+}
+
+fn is_imds_reachable() -> bool {
+    let address: SocketAddr = "169.254.169.254:80".parse().unwrap();
+    TcpStream::connect_timeout(&address, Duration::from_millis(500)).is_ok()
 }
 
 #[tokio::test]

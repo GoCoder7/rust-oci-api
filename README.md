@@ -529,10 +529,13 @@ Expected environment variables:
 - `OCI_SMOKE_SECRET_ID` (optional if key smoke is configured)
 - `OCI_SMOKE_SECRET_STAGE` or `OCI_SMOKE_SECRET_VERSION` (optional)
 - `OCI_SMOKE_KMS_MANAGEMENT_ENDPOINT` + `OCI_SMOKE_KEY_ID` (optional pair)
+- `OCI_SMOKE_EMAIL_CHECK=true|false` (optional, defaults to `false`; uses tenancy/compartment email control-plane probe)
+- `OCI_SMOKE_EMAIL_COMPARTMENT_ID` (optional override for email probe; defaults to `OCI_COMPARTMENT_ID` or tenancy)
+- `OCI_SMOKE_OS_NAMESPACE` + `OCI_SMOKE_OS_BUCKET` (optional pair for object storage bucket probe)
 - `OCI_SMOKE_ROTATE_KEY=true|false` (optional, defaults to `false`)
 - `OCI_SMOKE_KEEP_ALIVE=true|false` (optional, defaults to `true`)
 
-The runner never prints secret values; it only reports metadata such as version, stages, content length, key lifecycle state, and current key version.
+The runner never prints secret values; it only reports metadata such as version, stages, content length, key lifecycle state, current key version, email configuration endpoints, approved sender count, and bucket identity metadata.
 
 <br>
 

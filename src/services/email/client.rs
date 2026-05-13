@@ -20,6 +20,10 @@ pub struct EmailDelivery {
 }
 
 impl EmailDelivery {
+    fn control_host_for(region: &str, realm_domain: &str) -> String {
+        format!("ctrl.email.{region}.oci.{realm_domain}")
+    }
+
     /// Create new Email client
     ///
     /// Loads email configuration and caches the submit endpoint.
@@ -48,7 +52,7 @@ impl EmailDelivery {
         region: &str,
     ) -> Result<EmailConfiguration> {
         let path = format!("/20170907/configuration?compartmentId={compartment_id}");
-        let host = format!("ctrl.email.{region}.oci.{}", oci_client.realm_domain());
+        let host = Self::control_host_for(region, oci_client.realm_domain());
         let response = oci_client
             .executor()
             .execute(
@@ -151,11 +155,8 @@ impl EmailDelivery {
 
         let query_string = query_params.join("&");
         let path = format!("/20170907/senders?{query_string}");
-        let host = format!(
-            "ctrl.email.{}.oci.{}",
-            self.oci_client.region(),
-            self.oci_client.realm_domain()
-        );
+        let host =
+            Self::control_host_for(self.oci_client.region(), self.oci_client.realm_domain());
         let response = self
             .oci_client
             .executor()
@@ -181,5 +182,39 @@ impl EmailDelivery {
 impl EmailSender for EmailDelivery {
     async fn send(&self, email: Email) -> Result<SubmitEmailResponse> {
         self.send_impl(email).await
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::EmailDelivery;
+    use crate::client::{AuthMode, Oci};
+
+    fn instance_principal_client(region: &str, realm_domain: &str) -> Oci {
+        Oci::builder()
+            .auth_mode(AuthMode::InstancePrincipal)
+            .tenancy_id("ocid1.tenancy.oc1..example")
+            .region(region)
+            .realm_domain_component(realm_domain)
+            .build()
+            .unwrap()
+    }
+
+    #[test]
+    fn email_control_host_uses_commercial_realm_for_instance_principal() {
+        let oci = instance_principal_client("ap-chuncheon-1", "oraclecloud.com");
+        assert_eq!(
+            EmailDelivery::control_host_for(oci.region(), oci.realm_domain()),
+            "ctrl.email.ap-chuncheon-1.oci.oraclecloud.com"
+        );
+    }
+
+    #[test]
+    fn email_control_host_uses_gov_realm_for_instance_principal() {
+        let oci = instance_principal_client("us-langley-1", "oraclegovcloud.com");
+        assert_eq!(
+            EmailDelivery::control_host_for(oci.region(), oci.realm_domain()),
+            "ctrl.email.us-langley-1.oci.oraclegovcloud.com"
+        );
     }
 }

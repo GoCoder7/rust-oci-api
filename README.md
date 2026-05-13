@@ -41,16 +41,64 @@ use oci_api::vault::VaultSecretsClient;
 
 ## Configuration
 
-`oci-api` supports two authentication modes via `OCI_AUTH_MODE`:
+`oci-api` supports two authentication modes via the `OCI_AUTH_MODE` environment variable:
 
 | Mode | Value | Typical runtime |
 |------|-------|-----------------|
 | API key | `api_key` (default) | local development, CI, explicit credential injection |
-| Instance Principal | `instance_principal` | OCI Compute / Coolify-hosted runtime with instance identity |
+| Instance Principal | `instance_principal` | OCI-hosted runtime with instance identity |
 
-There are two ways to configure OCI credentials which are used for generating(signing) `Authorization` headers and requests:
+### Option A: Instance Principal
 
-### Option 1: Environment Variables (Recommended)
+Use Instance Principal when the workload runs on OCI and should use the instance's workload identity.
+
+```bash
+OCI_AUTH_MODE=instance_principal
+
+# optional: override metadata endpoint for local mock tests
+OCI_METADATA_BASE_URL=http://169.254.169.254/opc/v2
+```
+
+```rust
+use oci_api::Oci;
+
+let oci = Oci::from_env()?;
+assert_eq!(oci.auth_mode(), oci_api::client::AuthMode::InstancePrincipal);
+```
+
+Instance Principal notes:
+
+- No auth credential environment variables are required on OCI-hosted runtimes.
+- `OCI_REGION` and `OCI_TENANCY_ID` are auto-discovered when OCI metadata and the instance leaf certificate are available.
+- Auth tokens, session keys, and service endpoints are resolved lazily and refreshed automatically.
+- Resource-target variables such as secret OCIDs, bucket names, namespaces, or KMS endpoints remain separate from authentication configuration.
+- The runtime must belong to a dynamic group with policies for each target OCI service.
+- If the runtime is outside OCI, use `api_key` mode instead.
+
+#### Example Instance Principal policies
+
+The exact policy set depends on the services you call. For the currently implemented services, read-oriented access typically looks like this:
+
+```text
+Allow dynamic-group <dynamic-group-name> to read keys in compartment <compartment-name>
+Allow dynamic-group <dynamic-group-name> to read secret-family in compartment <compartment-name>
+Allow dynamic-group <dynamic-group-name> to read buckets in compartment <compartment-name>
+Allow dynamic-group <dynamic-group-name> to read email-family in tenancy
+```
+
+Notes:
+
+- Keys and secrets are compartment-scoped.
+- Object Storage bucket metadata reads are compartment-scoped.
+- Email Delivery control-plane reads are tenancy-scoped.
+
+### Option B: API Key
+
+Use API key mode for local development, CI, or any runtime outside OCI.
+
+#### Option B-1: Environment Variables (Recommended)
+
+OCI credentials used for generating(signing) `Authorization` headers and requests can be loaded from environment variables or from `OCI_CONFIG`.
 
 **Using `OCI_CONFIG` (supports both file path and INI content directly)**
 
@@ -128,36 +176,7 @@ let oci = Oci::from_env()?;
 \* `OCI_USER_ID`, `OCI_TENANCY_ID`, `OCI_REGION`, `OCI_FINGERPRINT`, and `OCI_PRIVATE_KEY` are required if `OCI_CONFIG` is not set.
 \* `OCI_PRIVATE_KEY` is recommended even if `OCI_CONFIG` is used, if you do not want to change the config file content between environments.
 
----
-
-### Option 1-B: Instance Principal Runtime
-
-When running on OCI infrastructure, switch to Instance Principal mode:
-
-```bash
-OCI_AUTH_MODE=instance_principal
-
-# optional: override metadata endpoint for local mock tests
-OCI_METADATA_BASE_URL=http://169.254.169.254/opc/v2
-```
-
-```rust
-use oci_api::Oci;
-
-let oci = Oci::from_env()?;
-assert_eq!(oci.auth_mode(), oci_api::client::AuthMode::InstancePrincipal);
-```
-
-Notes:
-
-- `OCI_REGION` and `OCI_TENANCY_ID` are optional in Instance Principal mode when OCI metadata is available.
-- `OCI_REGION` is discovered from IMDS `regionInfo` and uses the canonical region identifier rather than the short-code-prone plain-text region endpoint.
-- `OCI_TENANCY_ID` is discovered from the leaf identity certificate subject (`opc-tenant:` with `opc-identity:` fallback).
-- The security token and session key are fetched lazily on the first signed request and refreshed automatically before expiry.
-- Auth/service endpoint construction is realm-aware and uses the metadata-provided realm domain component.
-- Local validation should use a mocked metadata/federation flow; end-to-end validation still requires an OCI-hosted runtime.
-
-### Option 2: Programmatic Configuration
+#### Option B-2: Programmatic Configuration
 
 ```rust
 use oci_api::Oci;
@@ -510,32 +529,6 @@ Phase 1 scope intentionally focuses on:
 
 - key lookup
 - rotate action
-
-Coolify or other orchestration layers should manage test-runner/container lifecycle only. Secret and key operations should still go through OCI-authenticated API calls via `oci-api`.
-
-<br>
-
-## Smoke Runner Container
-
-This repository also includes a temporary smoke-runner container entrypoint for OCI-hosted validation:
-
-- binary: `smoke_instance_principal`
-- container build: `Dockerfile`
-
-Expected environment variables:
-
-- `OCI_AUTH_MODE=instance_principal`
-- `OCI_METADATA_BASE_URL` (optional override for local/mock tests)
-- `OCI_SMOKE_SECRET_ID` (optional if key smoke is configured)
-- `OCI_SMOKE_SECRET_STAGE` or `OCI_SMOKE_SECRET_VERSION` (optional)
-- `OCI_SMOKE_KMS_MANAGEMENT_ENDPOINT` + `OCI_SMOKE_KEY_ID` (optional pair)
-- `OCI_SMOKE_EMAIL_CHECK=true|false` (optional, defaults to `false`; uses tenancy/compartment email control-plane probe)
-- `OCI_SMOKE_EMAIL_COMPARTMENT_ID` (optional override for email probe; defaults to `OCI_COMPARTMENT_ID` or tenancy)
-- `OCI_SMOKE_OS_NAMESPACE` + `OCI_SMOKE_OS_BUCKET` (optional pair for object storage bucket probe)
-- `OCI_SMOKE_ROTATE_KEY=true|false` (optional, defaults to `false`)
-- `OCI_SMOKE_KEEP_ALIVE=true|false` (optional, defaults to `true`)
-
-The runner never prints secret values; it only reports metadata such as version, stages, content length, key lifecycle state, current key version, email configuration endpoints, approved sender count, and bucket identity metadata.
 
 <br>
 

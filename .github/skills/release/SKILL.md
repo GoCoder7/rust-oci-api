@@ -1,105 +1,162 @@
 ---
 name: release
-description: Manages crate versioning, changelog updates, and publishing to crates.io. Enforces user approval gates before final publish.
+description: Prepares and publishes a staged crates.io release for the oci-api crate with explicit approval before publish.
 ---
 
-# Release Skill
+# OCI API Release Skill
 
-Use this skill to prepare and publish a new version of the `oci-api` crate.
+## Purpose
 
-## When to Use
+Use this skill when the user wants a repeatable release workflow for the
+`oci-api` crate.
 
-- After merging feature or fix changes that should be released.
-- When bumping the crate version (major, minor, or patch).
-- Before and after publishing to crates.io.
+This skill keeps the release explicit and staged:
+
+1. require a clean worktree,
+2. ask the user for a semver bump,
+3. preview the next release before mutating the repository,
+4. prepare the local release commit and local annotated tag,
+5. ask again before publishing to crates.io and pushing to the remote.
+
+It follows the same staged release style used in the `flow` and
+`svelte-components` reference projects, but it is adapted to this Rust crate:
+
+- `Cargo.toml`
+- `README.md`
+- `CHANGELOG.md`
+
+## When to Run
+
+- When the user asks for a new `oci-api` release.
+- When the crate version should be bumped in a controlled semver step.
+- When the user wants a repeatable release workflow instead of ad hoc git and
+  `cargo publish` commands.
+
+## Related Files
+
+- `.github/skills/release/SKILL.md`
+- `.github/skills/release/bin/prepare-release.sh`
+- `.github/skills/release/bin/push-release.sh`
+- `Cargo.toml`
+- `README.md`
+- `CHANGELOG.md`
 
 ## Workflow
 
-### 1. Collect User Input
+### 1. Preflight
 
-Before any automated step, the agent must ask the user for:
+- Confirm the repository worktree is clean before any mutation.
+- Do not auto-stash or auto-reset the user's work.
+- Confirm that `Cargo.toml`, `README.md`, and `CHANGELOG.md` exist.
+- Make sure the crates.io token is configured before the final publish step.
 
-- **Bump level** (semver): `major`, `minor`, or `patch`.
-  - **patch**: Bug fixes, documentation, internal refactors (no API changes).
-  - **minor**: New features, additive API changes (backward compatible).
-  - **major**: Breaking API changes.
-- **Feature-related README changes**: Ask whether README content (usage examples, feature descriptions, API docs) needs updating beyond the version string. If yes, make those edits first.
+### 2. Collect the Release Intent
 
-Do not proceed without explicit user confirmation of the bump level.
+- Ask the user to choose one bump type: `major`, `minor`, or `patch`.
+- Use the current branch by default unless the user explicitly wants a different
+  branch.
+- Use `origin` as the default remote unless the user explicitly wants another
+  remote.
+- Ask whether `README.md` or `CHANGELOG.md` needs content edits beyond the
+  version bump. If yes, make those edits first.
 
-### 2. Pre-Release Checks
+### 3. Run the Release Checks
 
-- Run the full test suite: `cargo test`
-- Run clippy: `cargo clippy`
-- Build documentation: `cargo doc --no-deps`
-- Confirm all checks pass with no new warnings or errors.
+- Run the crate verification steps before any mutation:
 
-### 3. Update Documentation
-
-- Update `README.md`:
-  - Update the version string in the installation section.
-  - Update any feature-related content that reflects the changes in this release (new API sections, changed usage examples, removed features).
-- Update `CHANGELOG.md`:
-  - Add a new section with the release date.
-  - Categorize changes under `### Added`, `### Changed`, `### Fixed`, `### Removed` as applicable.
-- Update `version` in `Cargo.toml`.
-
-### 4. User Review Gate
-
-Present the following to the user and wait for approval before proceeding:
-
-- Computed new version
-- CHANGELOG entry summary
-- README diff (if feature-related changes were made)
-- Pre-release check results
-
-The agent must not run the publish script or commit until the user explicitly approves.
-
-### 5. Publish via Script
-
-After user approval, run the release script:
-
-```bash
-bash .github/skills/release/bin/release.sh <major|minor|patch>
+```sh
+cargo test
+cargo clippy
+cargo doc --no-deps
+cargo publish --dry-run
 ```
 
-The script handles: dry-run → commit → tag → publish → push.
+- If any command fails, stop the release workflow.
 
-If the script fails at any step, report the failure to the user and do not retry without guidance.
+### 4. Preview the Release Plan
+
+- Run:
+
+```sh
+bash ./.github/skills/release/bin/prepare-release.sh --repo-root . --bump patch --dry-run
+```
+
+- Read the JSON result and summarize:
+  - current branch,
+  - latest stable tag,
+  - current `Cargo.toml` version,
+  - current README install-snippet version if present,
+  - computed next version,
+  - whether version drift exists,
+  - whether the changelog already contains an entry for the target version,
+  - whether the version is already prepared locally.
+
+### 5. Prepare the Local Release
+
+- After the user approves the plan, run:
+
+```sh
+bash ./.github/skills/release/bin/prepare-release.sh --repo-root . --bump patch
+```
+
+- Read the JSON result and report:
+  - release commit SHA,
+  - created tag,
+  - previous tag,
+  - previous crate version,
+  - next version,
+  - whether a new release commit was created or the current `HEAD` was reused.
+
+### 6. Publish Only After Explicit Approval
+
+- Ask the user whether to publish the prepared release.
+- If the user declines, stop with the local commit and local tag left in place.
+- If the user approves, run:
+
+```sh
+bash ./.github/skills/release/bin/push-release.sh --repo-root . --tag <created-tag>
+```
+
+- This step publishes the crate to crates.io first, then pushes the branch tip
+  and tag to the remote.
+
+### 7. Report the Final State
+
+- Report the branch, commit SHA, tag, and remote used.
+- Make it explicit that the crate was published to crates.io before the git push.
+- If the release stays local only, make that clear in the summary.
 
 ## Conventions
 
-- Tag format: `v{MAJOR}.{MINOR}.{PATCH}` (e.g., `v0.6.0`).
+- Tag format: `v{MAJOR}.{MINOR}.{PATCH}`.
 - Commit message format: `release: v{VERSION}`.
-- CHANGELOG follows [Keep a Changelog](https://keepachangelog.com/) format.
+- `CHANGELOG.md` follows [Keep a Changelog](https://keepachangelog.com/) style.
 - Never publish without a passing `cargo publish --dry-run` first.
-- README must reflect actual feature changes, not just version string bumps.
+- `README.md` must reflect actual feature changes, not only the install version.
+
+## Validation
+
+- When this skill changes, validate it against the `verify-markdown` and
+  `verify-skill` checklists.
+- Validate the helper scripts with `--help` and a dry-run before trusting new
+  workflow changes.
+- If a helper script fails partway through, report the exact mutation point and
+  repository state back to the user.
 
 ## Shell Script
 
-The `bin/release.sh` script automates the final release steps from the command line. It is designed to run **after** manual documentation updates and user approval.
+The deterministic release stages are implemented by the helper scripts in
+`bin/`.
 
-```bash
-# Minor release (e.g., 0.6.0 → 0.7.0)
-bash .github/skills/release/bin/release.sh minor
+### Preview or prepare the local release
 
-# Patch release (e.g., 0.7.0 → 0.7.1)
-bash .github/skills/release/bin/release.sh patch
-
-# Major release (e.g., 0.7.1 → 1.0.0)
-bash .github/skills/release/bin/release.sh major
+```sh
+bash ./.github/skills/release/bin/prepare-release.sh --repo-root . --bump minor --dry-run
+bash ./.github/skills/release/bin/prepare-release.sh --repo-root . --bump minor
 ```
 
-The script performs:
-1. Version computation from current `Cargo.toml`
-2. Pre-release checks (`cargo test`, `cargo clippy`, `cargo doc --no-deps`)
-3. `Cargo.toml` and `README.md` version string bump
-4. `cargo publish --dry-run` validation
-5. CHANGELOG entry check (aborts if missing)
-6. Git commit, annotated tag, `cargo publish`, and push
+### Publish the prepared release
 
-**Prerequisites (manual, before running the script):**
-- `CHANGELOG.md` must contain an entry for the new version.
-- `README.md` must be updated with any feature-related content changes.
-- User must have approved the release via the agent's review gate.
-- crates.io token must be configured in `~/.cargo/credentials.toml`.
+```sh
+bash ./.github/skills/release/bin/push-release.sh --repo-root . --tag v0.7.0
+```

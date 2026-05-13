@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.7.0] - 2026-05-13
+
+### Added
+
+- Envless Instance Principal bootstrap on OCI-hosted runtimes by auto-discovering region and tenancy information from OCI metadata and the instance identity certificate.
+- Optional OCI-hosted validation probes for Vault / Keys, Email Delivery, and Object Storage while verifying Instance Principal flows against real OCI services.
+
+### Changed
+
+- Instance Principal signing and endpoint handling now cover PKCS#1 keys, normalized KMS management endpoints, and realm-aware service host construction.
+- README now focuses on consumer usage and separates release tooling into a staged, approval-gated workflow.
+
 ## [0.6.0] - 2025-04-01
 
 ### Added

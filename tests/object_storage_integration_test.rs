@@ -10,12 +10,13 @@
 //! - `OCI_AUTH_MODE=api_key` with `OCI_USER_ID`, `OCI_TENANCY_ID`, `OCI_REGION`,
 //!   `OCI_FINGERPRINT`, `OCI_PRIVATE_KEY`
 //! - or `OCI_AUTH_MODE=instance_principal` on an OCI runtime where IMDS is reachable
+//! - or leave `OCI_AUTH_MODE` unset to autodetect instance principal on OCI and fall back to API key elsewhere
 //!
 //! Additional required environment variables:
 //! - TEST_NAMESPACE (Object Storage Namespace)
 //! - TEST_BUCKET (Bucket name to use for testing)
 
-use oci_api::client::Oci;
+use oci_api::client::{AuthMode, Oci};
 use oci_api::services::object_storage::ObjectStorage;
 use std::net::{SocketAddr, TcpStream};
 use std::time::Duration;
@@ -28,19 +29,16 @@ fn load_env() {
 /// Helper to check if OCI credentials are configured
 fn has_oci_credentials() -> bool {
     load_env();
-    let has_auth = match std::env::var("OCI_AUTH_MODE")
-        .unwrap_or_else(|_| "api_key".to_owned())
-        .as_str()
-    {
-        "instance_principal" => is_imds_reachable(),
-        "api_key" => {
+    let has_auth = match Oci::resolve_auth_mode_from_env() {
+        Ok(AuthMode::InstancePrincipal) => is_imds_reachable(),
+        Ok(AuthMode::ApiKey) => {
             std::env::var("OCI_USER_ID").is_ok()
                 && std::env::var("OCI_TENANCY_ID").is_ok()
                 && std::env::var("OCI_REGION").is_ok()
                 && std::env::var("OCI_FINGERPRINT").is_ok()
                 && std::env::var("OCI_PRIVATE_KEY").is_ok()
         }
-        _ => false,
+        Err(_) => false,
     };
 
     has_auth && std::env::var("TEST_NAMESPACE").is_ok() && std::env::var("TEST_BUCKET").is_ok()

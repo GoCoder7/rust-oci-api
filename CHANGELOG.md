@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.8.0] - 2026-05-14
+
+### Added
+
+- `Oci::resolve_auth_mode_from_env()` to expose the exact auth-mode precedence used by `Oci::from_env()`.
+- Short OCI metadata probing so OCI runtimes can default to Instance Principal even when `OCI_AUTH_MODE` is unset.
+
+### Changed
+
+- `Oci::from_env()` now resolves auth mode with explicit override first, OCI metadata autodetection second, and API key fallback last.
+- Integration guidance and tests now treat unset `OCI_AUTH_MODE` as "autodetect on OCI, fallback elsewhere" instead of implicit API key mode.
+
 ## [0.7.0] - 2026-05-13
 
 ### Added

@@ -6,7 +6,7 @@ use crate::auth::config_loader::ConfigLoader;
 use crate::auth::key_loader::KeyLoader;
 use crate::auth::providers::{
     ApiKeyAuthProvider, DEFAULT_METADATA_BASE_URL, DEFAULT_REALM_DOMAIN_COMPONENT,
-    DynOciAuthProvider, InstancePrincipalAuthProvider, InstancePrincipalConfig,
+    DynOciAuthProvider, InstancePrincipalAuthProvider, InstancePrincipalConfig, MetadataRegionInfo,
 };
 use crate::client::request_executor::RequestExecutor;
 use crate::client::signer::OciSigner;
@@ -15,15 +15,19 @@ use crate::services::email::EmailDelivery;
 use crate::services::keys::KeysClient;
 use crate::services::object_storage::ObjectStorage;
 use crate::services::vault::VaultSecretsClient;
-use reqwest::Client;
+use reqwest::{Client, blocking::Client as BlockingClient};
 use std::env;
 use std::sync::Arc;
+use std::time::Duration;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AuthMode {
     ApiKey,
     InstancePrincipal,
 }
+
+const OCI_METADATA_PROBE_TIMEOUT: Duration = Duration::from_millis(500);
+const OCI_METADATA_BOOTSTRAP_TIMEOUT: Duration = Duration::from_secs(2);
 
 /// OCI HTTP client
 #[derive(Clone)]
@@ -60,23 +64,30 @@ impl Default for Oci {
 impl Oci {
     /// Create new OCI client from environment variables
     pub fn from_env() -> Result<Self> {
-        let auth_mode = match env::var("OCI_AUTH_MODE")
-            .unwrap_or_else(|_| "api_key".to_owned())
-            .as_str()
-        {
-            "api_key" => AuthMode::ApiKey,
-            "instance_principal" => AuthMode::InstancePrincipal,
-            other => {
-                return Err(Error::EnvError(format!(
-                    "OCI_AUTH_MODE must be 'api_key' or 'instance_principal', got '{other}'"
-                )));
-            }
-        };
+        let auth_mode = Self::resolve_auth_mode_from_env()?;
 
         match auth_mode {
             AuthMode::ApiKey => Self::from_api_key_env(),
             AuthMode::InstancePrincipal => Self::from_instance_principal_env(),
         }
+    }
+
+    /// Resolve the OCI auth mode from environment variables and OCI metadata.
+    ///
+    /// Precedence:
+    /// 1. Explicit `OCI_AUTH_MODE` override when provided.
+    /// 2. OCI IMDS autodetection with a short timeout.
+    /// 3. API key fallback for non-OCI runtimes.
+    pub fn resolve_auth_mode_from_env() -> Result<AuthMode> {
+        if let Some(auth_mode) = Self::explicit_auth_mode_from_env()? {
+            return Ok(auth_mode);
+        }
+
+        if Self::autodetect_instance_principal()? {
+            return Ok(AuthMode::InstancePrincipal);
+        }
+
+        Ok(AuthMode::ApiKey)
     }
 
     fn from_api_key_env() -> Result<Self> {
@@ -151,15 +162,23 @@ impl Oci {
     }
 
     fn from_instance_principal_env() -> Result<Self> {
-        let metadata_client = reqwest::blocking::Client::new();
         let metadata_base_url = env::var("OCI_METADATA_BASE_URL").ok();
-        let metadata_region_info = InstancePrincipalAuthProvider::metadata_region_info_blocking(
+        let metadata_client = Self::blocking_metadata_client(OCI_METADATA_BOOTSTRAP_TIMEOUT)?;
+        let metadata_region_info =
+            Self::metadata_region_info(&metadata_client, metadata_base_url.as_deref());
+
+        Self::from_instance_principal_env_with(
             &metadata_client,
-            metadata_base_url
-                .as_deref()
-                .unwrap_or(DEFAULT_METADATA_BASE_URL),
+            metadata_base_url,
+            metadata_region_info,
         )
-        .ok();
+    }
+
+    fn from_instance_principal_env_with(
+        metadata_client: &BlockingClient,
+        metadata_base_url: Option<String>,
+        metadata_region_info: Option<MetadataRegionInfo>,
+    ) -> Result<Self> {
         let region = env::var("OCI_REGION")
             .ok()
             .or_else(|| {
@@ -206,6 +225,48 @@ impl Oci {
             builder = builder.metadata_base_url(metadata_base_url);
         }
         builder.build()
+    }
+
+    fn explicit_auth_mode_from_env() -> Result<Option<AuthMode>> {
+        let Some(raw_auth_mode) = env::var("OCI_AUTH_MODE").ok() else {
+            return Ok(None);
+        };
+        let auth_mode = raw_auth_mode.trim();
+        if auth_mode.is_empty() {
+            return Ok(None);
+        }
+
+        match auth_mode {
+            "api_key" => Ok(Some(AuthMode::ApiKey)),
+            "instance_principal" => Ok(Some(AuthMode::InstancePrincipal)),
+            other => Err(Error::EnvError(format!(
+                "OCI_AUTH_MODE must be 'api_key' or 'instance_principal', got '{other}'"
+            ))),
+        }
+    }
+
+    fn autodetect_instance_principal() -> Result<bool> {
+        let metadata_client = Self::blocking_metadata_client(OCI_METADATA_PROBE_TIMEOUT)?;
+        let metadata_base_url = env::var("OCI_METADATA_BASE_URL").ok();
+        Ok(Self::metadata_region_info(&metadata_client, metadata_base_url.as_deref()).is_some())
+    }
+
+    fn metadata_region_info(
+        metadata_client: &BlockingClient,
+        metadata_base_url: Option<&str>,
+    ) -> Option<MetadataRegionInfo> {
+        InstancePrincipalAuthProvider::metadata_region_info_blocking(
+            metadata_client,
+            metadata_base_url.unwrap_or(DEFAULT_METADATA_BASE_URL),
+        )
+        .ok()
+    }
+
+    fn blocking_metadata_client(timeout: Duration) -> Result<BlockingClient> {
+        Ok(BlockingClient::builder()
+            .connect_timeout(timeout)
+            .timeout(timeout)
+            .build()?)
     }
 
     /// Start builder pattern
@@ -424,6 +485,35 @@ mod tests {
     use mockito::Server;
     use serial_test::serial;
 
+    const TEST_VALID_PEM: &str = r#"-----BEGIN PRIVATE KEY-----
+MIIEvwIBADANBgkqhkiG9w0BAQEFAASCBKkwggSlAgEAAoIBAQCvfVmTGipPCAsg
+fr8khhrPpQxmjUW62+pH/54EecyKTd8KTkg11wT40Pi5zB/UAl8DGTPs9MNz1PQX
+EGPh7YPccPTGJ4ZFfu87s2W9m3zp9UWUIy+n+Jr5FBpn8H7n7W/FPLTF7xRyzMSY
+BGWFKIyHkufglkKJlRkyVK8+0w6vFBg5Ni/0Eo0uTT31AWvv1b5nuCRstSCME2O7
+GbNUPo6vF1xEWNeFzp9Lp7JuMXu+tgLJiSkHKq7I2u25iQvklnqogDSLzxQigX/P
++08jd52R9HI0rWiwLVJ1QE/erZJ+DnKjikb3jpHNRVZmG7/tDM/54yh85L0JfzZx
+yt+b3qS5AgMBAAECggEAGMAKERggnXLZ9uRJWwJa56w0eoY0Lm1ztmHTzHfNJDhl
+W5O81XMU7W6zlai3WHRZKBu22hWPN1fycQpLvAJ+lWmM7CGI62ZCoV3k3IAAdxKz
+lHf98ae7W6O9MamWjGlNWTj9mejlLme41mPQWZ5la32JnIA0tCjGG/YbnTWxHXnx
+B5skseaEMR3DT98uBZa67IFKDLJDIIaD4aQNILMNtEb2PFOChblA0mm2szR3AMhv
+Pl0VvrexHR+xdlteUBJ/G3Y3KuAB4MzTwl9rBarTmBaaZbl+iD1Kt3v+elNQdVCo
+JPSfGr9AbVdFDHB0FS46sWqOyk3Rx9lScigUWb0mvQKBgQDnfUQJ7Uhqm7FByXQs
+MWxLQIEHukWGG98btV2FjHO5N/IObrjXXUEl3qkTIW+oa+im48HRDKjlIZkTtN7l
+tbhqRlt9lW7PXtR+J+YjSXxAeourNaaMxbaVy3U/fhVVP5KrWfLzBbb0ZOF2A7gq
+g+rlHFVIVPOLj8lIPIlFjST9zwKBgQDCEiklTiFZZP6EjvgT7yMdJgvOkLFcJ4nF
+A1PL72S7nYPKbwQZt0eUohMA/PVkDyemNpafTYeGjKx+waS60Zcn1/S6CMMDkmJL
+DBAJVtCXwVmyaJTocS9kQwTeLqK+BBiHWL9nPTHmrTmEfrVwwB51eB9G+EJlv4fy
+J8f4yPie9wKBgQCt/u3hOEUyPIxjknSLsype9cEGefA/+TsdrJj7BLMHCRIb3wV4
+e1O4j0AubPdsdI+Owaqw4v8gGrzgnxbbOle/Kdsi7es4W2ME4CCPbXDDVlkc+1qQ
+fRvcQ+2BJ9gJF5u6yAVgvW7jC+Cbv/fxnO41/7HqiE/3GsCEV1wmtwyS6QKBgQCe
+h7VCuwr0+lIKuLsflYYKhoy4hWvMSqP44pnuCjUwKSCCGaOw2g3H9YkuknRl8xdB
+aHAr22os1/cEaGyHCzS9oGRSH1wmK8rNYSIsbtVgUdpSqamSIvtCnJh6YoAgVjov
+PajEzbFYrQJCIDtYyidXb/OkxqF+ejGz9xkcOhcVywKBgQCCmIJbRrHKB7YYPD68
+NJo0kGnesUmsBzrFxWsckCTYpVkqjDI4VPeOYVFpXtlPkVMIIy7PSjZHCu9ujcDC
+Oj3UlzzFzA70eAdkFrBlFxIembT4SjSoptN/8GP8wIe7xgnvj0gZJTH3W+z8AiBr
+Ae/wEOcaaJD3g0i9hhz8Blf4IA==
+-----END PRIVATE KEY-----"#;
+
     const TENANT_CERT_PEM: &str = "-----BEGIN CERTIFICATE-----\n\
 MIIDXzCCAkegAwIBAgIUONFqOCNE1N3Aps1ZQaPpY7SQzngwDQYJKoZIhvcNAQEL\n\
 BQAwPzEuMCwGA1UECgwlb3BjLXRlbmFudDpvY2lkMS50ZW5hbnR5Lm9jMS4uZXhh\n\
@@ -482,7 +572,116 @@ Eo34\n\
 
     #[test]
     #[serial]
-    fn from_instance_principal_env_uses_metadata_region_info_when_bootstrap_envs_are_missing() {
+    fn resolve_auth_mode_prefers_explicit_api_key_over_oci_autodetect() {
+        let mut server = Server::new();
+        let _region_info = server
+            .mock("GET", "/opc/v2/instance/regionInfo")
+            .match_header("authorization", "Bearer Oracle")
+            .with_status(200)
+            .with_body(
+                r#"{"realmKey":"oc1","realmDomainComponent":"oraclecloud.com","regionKey":"PHX","regionIdentifier":"us-phoenix-1"}"#,
+            )
+            .create();
+
+        let guard = EnvGuard::new(&[
+            "OCI_AUTH_MODE",
+            "OCI_REGION",
+            "OCI_TENANCY_ID",
+            "OCI_METADATA_BASE_URL",
+            "OCI_COMPARTMENT_ID",
+        ]);
+        guard.set("OCI_AUTH_MODE", Some("api_key"));
+        guard.set("OCI_REGION", None);
+        guard.set("OCI_TENANCY_ID", None);
+        guard.set(
+            "OCI_METADATA_BASE_URL",
+            Some(&format!("{}/opc/v2", server.url())),
+        );
+        guard.set("OCI_COMPARTMENT_ID", None);
+
+        assert_eq!(Oci::resolve_auth_mode_from_env().unwrap(), AuthMode::ApiKey);
+    }
+
+    #[test]
+    #[serial]
+    fn resolve_auth_mode_autodetects_instance_principal_when_metadata_is_reachable() {
+        let mut server = Server::new();
+        let _region_info = server
+            .mock("GET", "/opc/v2/instance/regionInfo")
+            .match_header("authorization", "Bearer Oracle")
+            .with_status(200)
+            .with_body(
+                r#"{"realmKey":"oc1","realmDomainComponent":"oraclecloud.com","regionKey":"PHX","regionIdentifier":"us-phoenix-1"}"#,
+            )
+            .create();
+
+        let guard = EnvGuard::new(&[
+            "OCI_AUTH_MODE",
+            "OCI_REGION",
+            "OCI_TENANCY_ID",
+            "OCI_METADATA_BASE_URL",
+            "OCI_COMPARTMENT_ID",
+        ]);
+        guard.set("OCI_AUTH_MODE", None);
+        guard.set("OCI_REGION", None);
+        guard.set("OCI_TENANCY_ID", None);
+        guard.set(
+            "OCI_METADATA_BASE_URL",
+            Some(&format!("{}/opc/v2", server.url())),
+        );
+        guard.set("OCI_COMPARTMENT_ID", None);
+
+        assert_eq!(
+            Oci::resolve_auth_mode_from_env().unwrap(),
+            AuthMode::InstancePrincipal
+        );
+    }
+
+    #[test]
+    #[serial]
+    fn resolve_auth_mode_falls_back_to_api_key_when_metadata_is_unavailable() {
+        let guard = EnvGuard::new(&[
+            "OCI_AUTH_MODE",
+            "OCI_REGION",
+            "OCI_TENANCY_ID",
+            "OCI_METADATA_BASE_URL",
+        ]);
+        guard.set("OCI_AUTH_MODE", None);
+        guard.set("OCI_REGION", None);
+        guard.set("OCI_TENANCY_ID", None);
+        guard.set("OCI_METADATA_BASE_URL", Some("http://127.0.0.1:9/opc/v2"));
+
+        assert_eq!(Oci::resolve_auth_mode_from_env().unwrap(), AuthMode::ApiKey);
+    }
+
+    #[test]
+    #[serial]
+    fn resolve_auth_mode_treats_empty_override_as_unset() {
+        let guard = EnvGuard::new(&["OCI_AUTH_MODE", "OCI_METADATA_BASE_URL"]);
+        guard.set("OCI_AUTH_MODE", Some("  "));
+        guard.set("OCI_METADATA_BASE_URL", Some("http://127.0.0.1:9/opc/v2"));
+
+        assert_eq!(Oci::resolve_auth_mode_from_env().unwrap(), AuthMode::ApiKey);
+    }
+
+    #[test]
+    #[serial]
+    fn resolve_auth_mode_rejects_invalid_override() {
+        let guard = EnvGuard::new(&["OCI_AUTH_MODE"]);
+        guard.set("OCI_AUTH_MODE", Some("foo"));
+
+        let error = Oci::resolve_auth_mode_from_env().unwrap_err();
+        assert!(matches!(error, Error::EnvError(_)));
+        assert!(
+            error
+                .to_string()
+                .contains("OCI_AUTH_MODE must be 'api_key' or 'instance_principal'")
+        );
+    }
+
+    #[test]
+    #[serial]
+    fn from_env_autodetects_instance_principal_when_bootstrap_envs_are_missing() {
         let mut server = Server::new();
         let _region_info = server
             .mock("GET", "/opc/v2/instance/regionInfo")
@@ -506,7 +705,7 @@ Eo34\n\
             "OCI_METADATA_BASE_URL",
             "OCI_COMPARTMENT_ID",
         ]);
-        guard.set("OCI_AUTH_MODE", Some("instance_principal"));
+        guard.set("OCI_AUTH_MODE", None);
         guard.set("OCI_REGION", None);
         guard.set("OCI_TENANCY_ID", None);
         guard.set(
@@ -520,5 +719,35 @@ Eo34\n\
         assert_eq!(oci.region(), "us-phoenix-1");
         assert_eq!(oci.realm_domain(), "oraclecloud.com");
         assert_eq!(oci.tenancy_id(), "ocid1.tenancy.oc1..example");
+        assert_eq!(oci.auth_mode(), AuthMode::InstancePrincipal);
+    }
+
+    #[test]
+    #[serial]
+    fn from_env_uses_explicit_api_key_mode_when_requested() {
+        let guard = EnvGuard::new(&[
+            "OCI_AUTH_MODE",
+            "OCI_USER_ID",
+            "OCI_TENANCY_ID",
+            "OCI_REGION",
+            "OCI_FINGERPRINT",
+            "OCI_PRIVATE_KEY",
+            "OCI_CONFIG",
+        ]);
+        guard.set("OCI_AUTH_MODE", Some("api_key"));
+        guard.set("OCI_USER_ID", Some("ocid1.user.oc1..example"));
+        guard.set("OCI_TENANCY_ID", Some("ocid1.tenancy.oc1..example"));
+        guard.set("OCI_REGION", Some("ap-chuncheon-1"));
+        guard.set(
+            "OCI_FINGERPRINT",
+            Some("11:22:33:44:55:66:77:88:99:aa:bb:cc:dd:ee:ff:00"),
+        );
+        guard.set("OCI_PRIVATE_KEY", Some(TEST_VALID_PEM));
+        guard.set("OCI_CONFIG", None);
+
+        let oci = Oci::from_env().unwrap();
+
+        assert_eq!(oci.auth_mode(), AuthMode::ApiKey);
+        assert_eq!(oci.region(), "ap-chuncheon-1");
     }
 }

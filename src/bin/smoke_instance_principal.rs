@@ -165,10 +165,14 @@ async fn run_smoke(oci: &Oci, targets: SmokeTargets<'_>) -> Result<(), Box<dyn E
         println!("email approved sender count: {}", senders.len());
     }
 
-    if let (Some(namespace), Some(bucket_name)) =
-        (targets.object_storage_namespace, targets.object_storage_bucket)
-    {
-        let bucket = oci.object_storage(namespace).get_bucket(bucket_name).await?;
+    if let (Some(namespace), Some(bucket_name)) = (
+        targets.object_storage_namespace,
+        targets.object_storage_bucket,
+    ) {
+        let bucket = oci
+            .object_storage(namespace)
+            .get_bucket(bucket_name)
+            .await?;
         println!("object storage bucket lookup ok");
         println!("object storage bucket name: {}", bucket.name);
         println!("object storage namespace: {}", bucket.namespace);

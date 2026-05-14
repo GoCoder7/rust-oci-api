@@ -10,13 +10,14 @@
 //! - `OCI_AUTH_MODE=api_key` with `OCI_USER_ID`, `OCI_TENANCY_ID`, `OCI_REGION`,
 //!   `OCI_FINGERPRINT`, `OCI_PRIVATE_KEY`
 //! - or `OCI_AUTH_MODE=instance_principal` on an OCI runtime where IMDS is reachable
+//! - or leave `OCI_AUTH_MODE` unset to autodetect instance principal on OCI and fall back to API key elsewhere
 //!
 //! Additional optional environment variables:
 //! - OCI_COMPARTMENT_ID (optional, defaults to tenancy ID)
 //! - TEST_SENDER_EMAIL (optional, for email tests)
 //! - TEST_RECIPIENT_EMAIL (optional, for email tests)
 
-use oci_api::client::Oci;
+use oci_api::client::{AuthMode, Oci};
 use oci_api::services::email::{Email, EmailAddress, EmailDelivery, Recipients, Sender};
 use std::net::{SocketAddr, TcpStream};
 use std::time::Duration;
@@ -29,19 +30,16 @@ fn load_env() {
 /// Helper to check if OCI credentials are configured
 fn has_oci_credentials() -> bool {
     load_env();
-    match std::env::var("OCI_AUTH_MODE")
-        .unwrap_or_else(|_| "api_key".to_owned())
-        .as_str()
-    {
-        "instance_principal" => is_imds_reachable(),
-        "api_key" => {
+    match Oci::resolve_auth_mode_from_env() {
+        Ok(AuthMode::InstancePrincipal) => is_imds_reachable(),
+        Ok(AuthMode::ApiKey) => {
             std::env::var("OCI_USER_ID").is_ok()
                 && std::env::var("OCI_TENANCY_ID").is_ok()
                 && std::env::var("OCI_REGION").is_ok()
                 && std::env::var("OCI_FINGERPRINT").is_ok()
                 && std::env::var("OCI_PRIVATE_KEY").is_ok()
         }
-        _ => false,
+        Err(_) => false,
     }
 }
 
@@ -60,10 +58,15 @@ async fn test_oci_client_from_env() {
 
     let oci = Oci::from_env().expect("Failed to load OCI config from environment");
 
-    assert!(!oci.signer().user_id().is_empty());
     assert!(!oci.tenancy_id().is_empty());
     assert!(!oci.region().is_empty());
-    assert!(!oci.signer().fingerprint().is_empty());
+    match oci.auth_mode() {
+        AuthMode::ApiKey => {
+            assert!(!oci.signer().user_id().is_empty());
+            assert!(!oci.signer().fingerprint().is_empty());
+        }
+        AuthMode::InstancePrincipal => {}
+    }
 }
 
 #[tokio::test]

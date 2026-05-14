@@ -155,8 +155,7 @@ impl EmailDelivery {
 
         let query_string = query_params.join("&");
         let path = format!("/20170907/senders?{query_string}");
-        let host =
-            Self::control_host_for(self.oci_client.region(), self.oci_client.realm_domain());
+        let host = Self::control_host_for(self.oci_client.region(), self.oci_client.realm_domain());
         let response = self
             .oci_client
             .executor()

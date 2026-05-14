@@ -8,7 +8,9 @@ mod api_key;
 mod instance_principal;
 
 pub use api_key::ApiKeyAuthProvider;
-pub(crate) use instance_principal::{DEFAULT_METADATA_BASE_URL, DEFAULT_REALM_DOMAIN_COMPONENT};
+pub(crate) use instance_principal::{
+    DEFAULT_METADATA_BASE_URL, DEFAULT_REALM_DOMAIN_COMPONENT, MetadataRegionInfo,
+};
 pub use instance_principal::{InstancePrincipalAuthProvider, InstancePrincipalConfig};
 
 #[derive(Debug, Clone)]

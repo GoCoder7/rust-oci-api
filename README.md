@@ -24,7 +24,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-oci-api = "0.7.0"
+oci-api = "0.8.0"
 tokio = { version = "1", features = ["full"] }
 ```
 
@@ -45,12 +45,20 @@ use oci_api::vault::VaultSecretsClient;
 
 | Mode | Value | Typical runtime |
 |------|-------|-----------------|
-| API key | `api_key` (default) | local development, CI, explicit credential injection |
+| API key | `api_key` | local development, CI, explicit credential injection |
 | Instance Principal | `instance_principal` | OCI-hosted runtime with instance identity |
+
+When `OCI_AUTH_MODE` is unset, `oci-api` uses this precedence:
+
+1. Short OCI metadata probe (`/opc/v2/instance/regionInfo`)
+2. If OCI metadata is reachable, default to `instance_principal`
+3. Otherwise, fall back to `api_key`
+
+This keeps OCI-hosted runtimes on the workload-identity path by default while preserving API key usage for local and non-OCI environments.
 
 ### Option A: Instance Principal
 
-Use Instance Principal when the workload runs on OCI and should use the instance's workload identity.
+Use Instance Principal when the workload runs on OCI and should use the instance's workload identity. You can set it explicitly, or leave `OCI_AUTH_MODE` unset on OCI and let `oci-api` autodetect it.
 
 ```bash
 OCI_AUTH_MODE=instance_principal
@@ -70,6 +78,7 @@ Instance Principal notes:
 
 - No auth credential environment variables are required on OCI-hosted runtimes.
 - `OCI_REGION` and `OCI_TENANCY_ID` are auto-discovered when OCI metadata and the instance leaf certificate are available.
+- If `OCI_AUTH_MODE` is unset, OCI metadata reachability makes `instance_principal` the default path.
 - Auth tokens, session keys, and service endpoints are resolved lazily and refreshed automatically.
 - Resource-target variables such as secret OCIDs, bucket names, namespaces, or KMS endpoints remain separate from authentication configuration.
 - The runtime must belong to a dynamic group with policies for each target OCI service.
@@ -83,14 +92,15 @@ The exact policy set depends on the services you call. For the currently impleme
 Allow dynamic-group <dynamic-group-name> to read keys in compartment <compartment-name>
 Allow dynamic-group <dynamic-group-name> to read secret-family in compartment <compartment-name>
 Allow dynamic-group <dynamic-group-name> to read buckets in compartment <compartment-name>
-Allow dynamic-group <dynamic-group-name> to read email-family in tenancy
+Allow dynamic-group <dynamic-group-name> to read objects in compartment <compartment-name>
+Allow dynamic-group <dynamic-group-name> to read email-family in compartment <compartment-name>
 ```
 
 Notes:
 
 - Keys and secrets are compartment-scoped.
-- Object Storage bucket metadata reads are compartment-scoped.
-- Email Delivery control-plane reads are tenancy-scoped.
+- Object Storage object reads require `read objects` in addition to `read buckets`.
+- Email Delivery control-plane reads can be compartment-scoped.
 
 ### Option B: API Key
 

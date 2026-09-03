@@ -1,0 +1,62 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:c251b0b661444f52de2ef075648908ae687f93d66265d32d86a149c20978127b",
+  "claims": [
+    {
+      "id": "claim_34385ecc760640ffac8dcd63f1120907",
+      "statement": "The repo-local `release` skill defines a staged release flow: require a clean worktree, pick a semver bump, preview the release, prepare the local release commit and tag, and ask again before publishing to crates.io and pushing to the remote.",
+      "evidence": [
+        {
+          "resource": "repo://.github/skills/release/SKILL.md#L8-L20",
+          "version": "repo-lines-v1:sha256:df45be369845f67c8abb323260c67202b1192aa46dd3c53698a1fd1dacba4dba:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk5NDQxMzI5N2EzZTk1YTliNzJmNWU0YzA0YWE5YzMwNmY5MDA5YWQ4OGZhMGY5OTQ1M2QxOTYzODM1NjY4YjkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImFhOTkxOTI0NTk0ZGZlYjQ3ZDg0ZGUwMDM0ZWFiNTZlYzdiMzRiYTk0MzllYTU2MDMwYzAxMzVmYzUyZTUyYzAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjE2M2NmOWMyYzVjNWFlYWMzM2RjYjAwZDVhY2Y3NjA3NzAyODVkZjNkNTE5NDljNjA4YTNhMjJjOTY3YTM3MmIifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_04c79f4adaf24297a854393b17c215fe",
+      "statement": "The release workflow treats `Cargo.toml`, `Cargo.lock`, `README.md`, and `CHANGELOG.md` as the synchronized release-facing files, and the helper scripts live under `.github/skills/release/bin/`.",
+      "evidence": [
+        {
+          "resource": "repo://.github/skills/release/SKILL.md#L21-L43",
+          "version": "repo-lines-v1:sha256:25ad1d2d814df6319c5e645cd44046a500cdfdf2b6c12fa8b6d5389b7fc21274:eyJzZWxlY3RlZExpbmVDb3VudCI6MjMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQzOWU1M2U4NmI2MjA0OWMzYzU2ODNhNzQ5NWM5MzRhMzdjMTliYmM2YjNjZjkzNDJlMzliM2MwZjlkNzMzYTUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI1YzhjMzg4MGNhNjExNGZlZWFiYTFlODgxZDFmOWEyYjIxNDM5NzEzZmEzNGZmZDM3NTY1MmFiNTNkZDVlZGMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImY1MDk2NzI2ZmUwNDExMzdkMTc1YWExY2M2NThhNDgwOWZjOTBiMDAyNzdjMTY0OTcwNzcxY2EwZjk1MmMxNmQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijg2NWEyMzAzOTA3ZTZlZWFlMTUwMWVlOTQ1MzkyMDY3NzgyNTU4MTg3NjMwZDVhOWQzZTY3NTBlYTg4ZTYxODcifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_7309a42c21ff42c98a2345b5f02fe85a",
+      "statement": "The documented pre-release checks are `cargo test`, `cargo clippy`, `cargo doc --no-deps`, and `cargo publish --dry-run`, and the helper scripts are `prepare-release.sh` for preview/prepare plus `push-release.sh` for publish and push.",
+      "evidence": [
+        {
+          "resource": "repo://.github/skills/release/SKILL.md#L156-L172",
+          "version": "repo-lines-v1:sha256:f137bf277cf0ce3a310ac918330beba7b960f29d6a9788e889126f91d93b1507:eyJzZWxlY3RlZExpbmVDb3VudCI6MTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg1MDRhYjEwMWQyZjg0ZjFjMzE4YzUxNGQ3ZWZhNjgwYTg2MDFmOTAyMTZlNjVjNWJmMmQ0MzA1ZmVhZmM0NWIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ3YzA2YzU2MWQ1YzMyNzM0MzY4NTI2OGE0NmIzMzkxZjM5OThlZWU4OTBkMmJlNTFmMGQyMWNjNGE1M2FlNmQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjBmYjkxMDJlYjMyNmYyOTM1ZDc0ODFkYjNkYTA4NmRhNzI3NGU0ZjhlZTA1YmY5ZWE1MGNkNzg1NGQxMGFiMDEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://.github/skills/release/SKILL.md#L64-L127",
+          "version": "repo-lines-v1:sha256:6bdef84e86017aebfb3ef728a60085d73a4fcc9a2778b8f92bcfc344109bffda:eyJzZWxlY3RlZExpbmVDb3VudCI6NjQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAzYjYwYjQyYTM1MWNhM2FmMjBlYTU5ZTNlZmVkNDFlNDY0MjNhN2M0OTMzMmRlNjJkNzFiNDk3MjBjZmY4YWMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVmMzhhNTViZjZkNzBmOTBjZTdjNjlhY2E3M2QzMDM0MWRiZDQ5NDgyYTJjNGY4MmI1ODJjNzQwZDRlZjU4YTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImM4ODk0NjAyNGM2OGYyMjI4YmE2NTM1NzhjOTM1YzJkZWQwOTVlYjg3Mjc0MGFhNWU2ZGZlNjVjMzhiNDIxODciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjU1OGY0MTBkYWU1MmQ2ODNjNDkwYzkzZGNmM2M0OGZhNWZkZGQ2ZmU0NjRmMGRmNWMwNzIxZGRlMWM3MGJlOGEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_257d7e0cf8c047c0a9978cde809d8d08",
+      "statement": "The current development line is `0.9.0`: `Cargo.toml` declares version `0.9.0`, the README install snippet uses `0.9.0`, and the changelog already contains an unreleased `0.9.0` section.",
+      "evidence": [
+        {
+          "resource": "repo://CHANGELOG.md#L1-L17",
+          "version": "repo-lines-v1:sha256:69c037a7b83d8ccc62486068fe871be659b973c6af74b7c545fa69013a9b22a6:eyJzZWxlY3RlZExpbmVDb3VudCI6MTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNlNzljNGNhZmI1MDRhMjFmODkxM2U0ZTBlNjZmMmZmN2IxMTkyYTEyN2M2ZjU2NGFhYjM3OWM4YjVmYTliZGQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjBjNTUxMzk0NTQ4ZDQ1YzNmNjQ3M2ViY2ViODY5MGVjMGE3MWE2NjgyM2ZhODhkZjZiOGU4Yjg3YjRkM2MzOWQifQ"
+        },
+        {
+          "resource": "repo://Cargo.toml#L1-L3",
+          "version": "repo-lines-v1:sha256:56365dc967b6487e563df9597926e694f38b98a74c51ce0f45a27a01ad731a4b:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiOGEzY2Q1YTgxYjNmOWE2MjFhYTQ5M2Q5MGM0NWY0MmFiNTcxZDRlNDJiOGFlNWFmZjM1MWNiMGEwMmQwNmQ4MiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiOGU0N2M3OWYzNTVhZDc0MjEwNGE5Njc2YTcxMmE5MGQyYmFlYTZjODZkMmM5NDNhZWU1OGM1MmY5MjYwYmNhNCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjAsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiY2JmNGQwNjFmYzc3NTkzZmI5ZTgwMThiYzM1YTU2NGFiZWY4OGMzZDI1OTgwZjlhMDg1YmE2NzZkZGQwMWJmOCJ9"
+        },
+        {
+          "resource": "repo://README.md#L21-L37",
+          "version": "repo-lines-v1:sha256:57c7c118218108de97a63170a3b743775b0085e67e5305f0da9b15266fd07f4a:eyJzZWxlY3RlZExpbmVDb3VudCI6MTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImMzMmZkZGNmMjFiZGQ2ZTk0NTkwOWMwYzdlOTQxYjI3OWY2NjMxNWU1MjMxMTIyNjMwMGYwMWNmNjYxNTZhZTAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ3YzA2YzU2MWQ1YzMyNzM0MzY4NTI2OGE0NmIzMzkxZjM5OThlZWU4OTBkMmJlNTFmMGQyMWNjNGE1M2FlNmQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjI1ZTJmZjEzOTgzZDJjMTBkNzE3NzcyYjRhNGYyMjJjNDE0MzU2YjU2YTNmNmEwYWY1MjQxMjA3ODdmZmFkMDIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjNlYWFlMzY5ZWQ2OTk3OTRkZDcyMzQ5MWI2NmJjYzgyY2I5MTcwYzRmMTEzYWVjYjFmYzNhMDQzZDlkMzJiNTMifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.4.0",
+    "at": "2026-09-03T14:32:33.099Z"
+  }
+}

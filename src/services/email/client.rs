@@ -1,6 +1,7 @@
 //! Email client
 
 use async_trait::async_trait;
+use bytes::Bytes;
 use reqwest::Method;
 
 use crate::client::Oci;
@@ -119,7 +120,7 @@ impl EmailDelivery {
                     path,
                 },
                 RequestPayload {
-                    body: Some(body_json),
+                    body: Some(Bytes::from(body_json)),
                     content_type: Some("application/json"),
                     extra_headers: Vec::new(),
                 },

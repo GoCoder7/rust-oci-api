@@ -1,3 +1,4 @@
+use bytes::Bytes;
 use reqwest::Method;
 
 use crate::auth::{OciAuthProvider, SignRequest};
@@ -10,7 +11,7 @@ pub(crate) struct RequestTarget<'a> {
 }
 
 pub(crate) struct RequestPayload<'a> {
-    pub body: Option<String>,
+    pub body: Option<Bytes>,
     pub content_type: Option<&'a str>,
     pub extra_headers: Vec<(String, String)>,
 }

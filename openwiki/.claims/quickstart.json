@@ -1,0 +1,62 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:11132269a47597b2e27d539824ea8124cbf0c9a05ff8ed15fcd0bb877b68c21d",
+  "claims": [
+    {
+      "id": "claim_3889d548bdfb45c3b5cc906f310df6ec",
+      "statement": "The repository positions `oci-api` as a Rust OCI client and currently lists Email Delivery, Object Storage, Vault Secrets, and Keys as the supported service surfaces.",
+      "evidence": [
+        {
+          "resource": "repo://README.md#L1-L19",
+          "version": "repo-lines-v1:sha256:91c3c16d0e3cdb0c1b6e1e54d7c84b8339c12d325e70e0385ba2d69d1bdc7217:eyJzZWxlY3RlZExpbmVDb3VudCI6MTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjczZDVkZjYxN2U2NDNlOGQ1OTkxZWMwZDk2OGZjMWQ2NjZkNmZiMzVhNGM5ODI3YmFhZmUyMTU1NjhiNzBkOWQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAzMjhhNmJmMDhhOGE2N2MwZmMwODQxNTZiZmFlOThiOTUyYWJjYzM4OWUzZmU2YmNjNWRiZDk0ZmQ2M2M3NmEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImRkMDAyNGQ5MDc1YjQzOGNmYjljZDU3MDcyNjBiM2IxMTY2ZmNmYmVmMWE3YzcyY2ZiZjUxNzlhNThlZTgzYjQifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_829c860182ff4a8c942c1f3b5c58e5d7",
+      "statement": "The crate root re-exports `Bytes`, `AuthMode`, `Oci`, `OciBuilder`, and the top-level service modules, while `Oci` exposes convenience constructors for Email Delivery, Object Storage, Vault Secrets, and Keys clients.",
+      "evidence": [
+        {
+          "resource": "repo://src/client/http.rs#L317-L335",
+          "version": "repo-lines-v1:sha256:ef56aa0c99f73037e9438c5d983c7139c8cc725de8104169fc0be1caa92252f4:eyJzZWxlY3RlZExpbmVDb3VudCI6MTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFhMzE5M2Y4ZmRlNDUxZTM1YzU4ZDZkNmZmOTE1MmM2ZDFiYjMxMDZmZGU0ZGMwMmZiOTA1YWEzNWYzNGY5ZWIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjU0Njg3MzhmMDg5ZjExMmMxNTRiZDMyZjgwY2M0MzIwNWJjNzc0MjgzMzRlYmU4NjY3ZDBkNTAzZGFmZjE3YzIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjE0ZTMwYjAzYTI5OTE0NzgzNTg1YjYxYzhhOGVmZjVmMDA1MzI0MzNmMWQ5YzdiYTQ1MTgxYmJmZWMzMzgwYjgifQ"
+        },
+        {
+          "resource": "repo://src/lib.rs#L26-L45",
+          "version": "repo-lines-v1:sha256:f02c60a51da20cc629be6ff7d3c299ff4ff1012668693451836a9fac2d10a830:eyJzZWxlY3RlZExpbmVDb3VudCI6MjAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgwZTYyN2ZmNTZlYzc4ZDc0NzZmMjRkNWQ0ZTBkNDFmOTZiMDY2MTc5ZjViZjk3YjM2YThkZjM3ZDg0NDZlYzEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhjZmFiM2ExZmM2MmNhMDg0Nzc1MDJlNjZiMjFjM2YyZTE3YWMyMGVjZTAwNzNjODIyZTY1ZjUzODFmNjZiYmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYzYmY1MjY2NDQwOGFhMGVhMWE5OGQyZjIzZThhNDMzMjM1NDg2Mjc3OGQxMDcwMzc5OTJhYjNkODRmZmIwZTYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_d0cd050bd83e413ca2666fb73fa981fd",
+      "statement": "The installation guidance now targets `0.9.0`, defaults to `native-tls`, and documents `rustls-tls` as the alternative feature set for users who want to avoid the native-tls/OpenSSL path.",
+      "evidence": [
+        {
+          "resource": "repo://Cargo.toml#L1-L35",
+          "version": "repo-lines-v1:sha256:6a0b5902622e9616faef0197299c56449150d9e93c9e34788a685a6c1b473f0f:eyJzZWxlY3RlZExpbmVDb3VudCI6MzUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhhM2NkNWE4MWIzZjlhNjIxYWE0OTNkOTBjNDVmNDJhYjU3MWQ0ZTQyYjhhZTVhZmYzNTFjYjBhMDJkMDZkODIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY5NDE2ZTA5Zjc4YmEzMTZjMDMyNTY4MjEzYjg1NWVlNzU2ZTQxNTY1ZDkxOGYwOTUxOWM4MWZkNjIwZjQwNjAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjMwYWQzMjNhOTlmNWE0MmEyYTk3NGMwNWVhMzMyNTY2ZTEwYThjMjhkZDBkMWQ3MDlmNTVjNGY3OTNhMGNiOTIifQ"
+        },
+        {
+          "resource": "repo://README.md#L21-L37",
+          "version": "repo-lines-v1:sha256:57c7c118218108de97a63170a3b743775b0085e67e5305f0da9b15266fd07f4a:eyJzZWxlY3RlZExpbmVDb3VudCI6MTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImMzMmZkZGNmMjFiZGQ2ZTk0NTkwOWMwYzdlOTQxYjI3OWY2NjMxNWU1MjMxMTIyNjMwMGYwMWNmNjYxNTZhZTAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ3YzA2YzU2MWQ1YzMyNzM0MzY4NTI2OGE0NmIzMzkxZjM5OThlZWU4OTBkMmJlNTFmMGQyMWNjNGE1M2FlNmQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjI1ZTJmZjEzOTgzZDJjMTBkNzE3NzcyYjRhNGYyMjJjNDE0MzU2YjU2YTNmNmEwYWY1MjQxMjA3ODdmZmFkMDIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjNlYWFlMzY5ZWQ2OTk3OTRkZDcyMzQ5MWI2NmJjYzgyY2I5MTcwYzRmMTEzYWVjYjFmYzNhMDQzZDlkMzJiNTMifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_7957e04c4b9748dc843e231b645cfe8d",
+      "statement": "The authentication documentation states that `OCI_AUTH_MODE` selects between `api_key` and `instance_principal`, and when unset the client probes OCI metadata before falling back to API key mode.",
+      "evidence": [
+        {
+          "resource": "repo://README.md#L50-L119",
+          "version": "repo-lines-v1:sha256:13a05456a56f4a76045d3d0a761d13094419044e7822d9e41330a3f5accd14fa:eyJzZWxlY3RlZExpbmVDb3VudCI6NzAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFmMjc2NGI4MjViNGI5NDE3ZGJmNjM3YTcwYjRlOTViZTAxZTBmNDU2MjYxMzQxODlmNDdkOWIwYzA0NmQwYzQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFjM2ZmY2M3ODY2YTIxN2Q5OGMxMjk0NjIxYmE1NTI3NjcyMDM3MjI4Njc1OTJiOGE3MjI4YjFjMTM3M2Y0ZDMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImNhODliOWY3ZDZjMTk0MTE2ZDFhNzdjODNjMWE0OGIxNTQyNjhhOGI1ZDc4ZDM2MjVjNmEzZGExNTEyMjhiYmMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImYyODIxODY3NTlmZDUwODc1ZmNiYjA1NDIyYTdlNGEyMjZkMGQ4YzljNmE1Zjg1Y2FhNjAxOTVhMTdmMGMzYTgifQ"
+        },
+        {
+          "resource": "repo://src/client/http.rs#L75-L91",
+          "version": "repo-lines-v1:sha256:6cfdeedba0d6ed6f60499df4ce9debaaf47bf865d4284879b196c56ee31ee047:eyJzZWxlY3RlZExpbmVDb3VudCI6MTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU3ZDA5NTJhZjRiZjk0ZDM3MzhhNTExMmQxMzMzODNiZTBkMTAyZjAxMWIxMDdiM2ZmNzU4NzVkNzdhN2M4NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk5OWJkZWZlZWFjYTYzNDBlMDI5MGRjODZlODg5Yzg5ZDVlMTg5YWE1YmE0NGI1ODViM2I3MDczNGY0YTYyZDgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImI1YTQ1MTk5MjJjNzI2NTRjNjc4M2E5ZmUxMWUxM2Q2MDI2ZDgzMjZkOWE4MjU1YWQ5MDg4NDMxNDQ0ZmIwYjMifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.4.0",
+    "at": "2026-09-03T14:32:33.099Z"
+  }
+}

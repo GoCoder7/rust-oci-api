@@ -31,6 +31,7 @@ pub mod services;
 pub mod utils;
 
 // Re-exports for convenient imports
+pub use bytes::Bytes;
 pub use client::{AuthMode, Oci, OciBuilder};
 pub use error::{Error, Result};
 

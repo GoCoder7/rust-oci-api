@@ -1,0 +1,62 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:32a3d9153d08f76f8f7c0cda0ae825c9ae97c89f7b42e004072b527f71f7edc7",
+  "claims": [
+    {
+      "id": "claim_62be1265291a4f56847cc094aa37b3bc",
+      "statement": "`tests/auth_integration_test.rs` provides offline coverage for builder and config-loader behavior, including full builder construction, multi-profile config loading, missing-field validation, and region handling.",
+      "evidence": [
+        {
+          "resource": "repo://tests/auth_integration_test.rs#L37-L184",
+          "version": "repo-lines-v1:sha256:cce9274fb0acd23ec8ec71fb14e126819ae2c42ca97321781f5f788d0c3cd819:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQ4LCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiJkMmNkNGRiNDhhMzUwZThmMGI0Nzk0NGM0NmUzZmZkYmJhMTMyZDIyOTBhOTFkNzAxMmI1NmViNDZjOGFiNGY2IiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiI0MTJjYTM0NWNjZjc1YmY5YzA4MDZiY2U2OTViZThkZTgwOGI3OTk4NDI1MWE3YTU0ZDIwMmNmNjEwMWRkNDUxIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiI0YThlY2ZjMTZhZDBkYjUzZGU2MmEzMzA5ZTEyMjQ4MjkxODQwMDZmM2QzNzhjNzJmMGYwYTVkZDU2NzFmNTA2IiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiJkYTRmNTg3OWYxODcwZjhjZWU4ZjA3ZjUwNjVjN2MxYmEzZDM1M2VhNWJkZWEyYzI5NjI2NTVjYWU4MWI3NTBmIn0"
+        }
+      ]
+    },
+    {
+      "id": "claim_972586c667db4db881187b819aec1d0d",
+      "statement": "The live OCI suites are ignored by default and require explicit `cargo test --test ... -- --ignored` execution, and both Object Storage and the broader real-OCI suite accept either API-key credentials or Instance Principal when IMDS is reachable.",
+      "evidence": [
+        {
+          "resource": "repo://README.md#L52-L119",
+          "version": "repo-lines-v1:sha256:bad0705334300d13cee8013de7df633df9564e2a77d79f17feaff68af3b53b86:eyJzZWxlY3RlZExpbmVDb3VudCI6NjgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA2NjAwN2I4ZGQyOWUzODk4ZDFjY2QzODQzMjUwZjA5NzVlNDEwOGY0OTU5MTQ0YWE2NWZlMTFhM2UxMTg4MTciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFjM2ZmY2M3ODY2YTIxN2Q5OGMxMjk0NjIxYmE1NTI3NjcyMDM3MjI4Njc1OTJiOGE3MjI4YjFjMTM3M2Y0ZDMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjU3ZDdhZjM4MGMwZDZlNjhiN2Y0YTlhZWM1YzMwOTNkMzE3OWFkNjNkZGQzYmQyYmExNTNiZTZhMDEwZTYyNjMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImYyODIxODY3NTlmZDUwODc1ZmNiYjA1NDIyYTdlNGEyMjZkMGQ4YzljNmE1Zjg1Y2FhNjAxOTVhMTdmMGMzYTgifQ"
+        },
+        {
+          "resource": "repo://tests/object_storage_integration_test.rs#L1-L17",
+          "version": "repo-lines-v1:sha256:35b90672604b16ae0a5f8bc9b7d88f3ecd6c7eb62a2ac1f4825427e6f4abb791:eyJzZWxlY3RlZExpbmVDb3VudCI6MTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE3ZjBhMjEyNTdiNmY3ZDI2NjgzMjJhZGEzNDMwNmFjNTg3ZDAwYjk2YTMwNjQ3NTI1Yzk1ZmJkZTJlYjQxNzkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk2NWFiY2M5MzBkNzBmNzVkYThmYjJlZmY0YzY3MDI2Y2JiYjc5Y2I1YjFiY2RmNTM0YTgxMmRkYWU4N2UwNGEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImM1NzM1NjcwMDVhZTliYjhjNzFmYTFmOGU4ZmRhOWRiZWFmOGNmODgyOGVjZGJlMmRhMzUwMWEyYTcyNjQ0ZjcifQ"
+        },
+        {
+          "resource": "repo://tests/real_oci_integration_test.rs#L1-L18",
+          "version": "repo-lines-v1:sha256:0a9993225f1434f9842160a20461cd898ca7226b009910187c70ac4815e21f4b:eyJzZWxlY3RlZExpbmVDb3VudCI6MTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc3MDU1NGEzODgzNGI2MDRjODVkYjI3YWIxMTliOTFkNDIzOTg5M2M5MTM3MzlhN2Q4YWZjM2U2MzFmMzVlYTEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjUxZmJkZjc5MWVjNmMzMGE3MWQyMGU1NWQ5NjIyMzE2Y2JmMmRlOGY3ZmQ1ZDQ4MWE4MTFkNTQ0OTNlNGIxNmQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjY5OWUwOWY4MTQ3YjBlY2M3NjZkYTNhMTA0NzcyOGNmNDc4MTdhOWJmODI4MDg1YzExZjk1MDBiYTQ2MDlhZmQifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_3dade656892c46fd911e0de1e513032e",
+      "statement": "The Object Storage integration test requires `TEST_NAMESPACE` and `TEST_BUCKET`, then uploads raw bytes, downloads them again, and deletes the object.",
+      "evidence": [
+        {
+          "resource": "repo://tests/object_storage_integration_test.rs#L15-L17",
+          "version": "repo-lines-v1:sha256:22b047cf95953655116d5e18c101cbe625c54c4723a33ffb9b14c8f4e793ca3d:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNGE1ZTlhMmYxY2MxMTE4YWZiMzVhZTU3YmQwMDgxNWIwMTJhMTFkNTBmNTJkODY2OTk5MTcwMzQ3YTMxNWIzZiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiOTY1YWJjYzkzMGQ3MGY3NWRhOGZiMmVmZjRjNjcwMjZjYmJiNzljYjViMWJjZGY1MzRhODEyZGRhZTg3ZTA0YSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZGU5NGIyMTA1MjdiY2NiNzY1MmNjZTZkMTllOTBiMzk3Mjg4MTExZmFmZGMyYmQ5OGE5ZmYxNmYyODI4N2MwZCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYzU3MzU2NzAwNWFlOWJiOGM3MWZhMWY4ZThmZGE5ZGJlYWY4Y2Y4ODI4ZWNkYmUyZGEzNTAxYTJhNzI2NDRmNyJ9"
+        },
+        {
+          "resource": "repo://tests/object_storage_integration_test.rs#L73-L123",
+          "version": "repo-lines-v1:sha256:6b515146a62926e575d147a6995fdfbf99e09778b10c82072872384aafbee09e:eyJzZWxlY3RlZExpbmVDb3VudCI6NTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjUxOTQ4NGVlZGYzNjRmYjhjMTJmMWViOThmYmY2YTliNGY2NTBmNDI3ODc0YThkNzM1OTAxMGFhZGU0MzFiYzgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImMyZjEyNWY3OGFhMjA0NWJmMzMzOTNiY2FhODM0Zjk5NWRkMWUzNDZlM2ZmMTI4YjliNDhkMGQyYWMwYmM5N2EiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_c226f95cd7d146a08483d274d5316b7d",
+      "statement": "The broader real OCI suite validates client creation from the environment and Email Delivery reads such as configuration lookup, endpoint caching, and sender listing, while the full send flow is explicitly guarded behind approved-sender requirements.",
+      "evidence": [
+        {
+          "resource": "repo://tests/real_oci_integration_test.rs#L51-L229",
+          "version": "repo-lines-v1:sha256:c1fa9d902f6a2787d706645f8700aca485e9ea598f9a8f00ee441facecb8f7b6:eyJzZWxlY3RlZExpbmVDb3VudCI6MTc5LCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiI1MTk0ODRlZWRmMzY0ZmI4YzEyZjFlYjk4ZmJmNmE5YjRmNjUwZjQyNzg3NGE4ZDczNTkwMTBhYWRlNDMxYmM4IiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiI0MTJjYTM0NWNjZjc1YmY5YzA4MDZiY2U2OTViZThkZTgwOGI3OTk4NDI1MWE3YTU0ZDIwMmNmNjEwMWRkNDUxIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiI0NmEwYmI4NjNhZmY0M2ViMDMzM2U2NjhiZGYxZjEwZWMzNjM3YThiZGRlZmQwZTNhNzU4ZGYyNTg5ZmE5OWZhIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiI4ODViNzFmZmFmMTU3OGZmMjk1MTU0MjUxNDFjYWNlOTNmOGU5MzNkZDQzMWQzZjkxYjI2YmUzZTc2OTc5NmM3In0"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.4.0",
+    "at": "2026-09-03T14:32:33.099Z"
+  }
+}

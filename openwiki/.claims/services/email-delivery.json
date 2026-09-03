@@ -1,0 +1,70 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:a0ce0f313115f9d8af06ba2b79e791ab673ce0c45ca6f658db03b3ed5ad7a4e5",
+  "claims": [
+    {
+      "id": "claim_e11c309ea5b8485fa8d3c545fdddf10b",
+      "statement": "`EmailDelivery::new()` derives tenancy and region from `Oci`, loads the Email Delivery configuration immediately, and caches the returned HTTP submit endpoint inside the client.",
+      "evidence": [
+        {
+          "resource": "repo://src/services/email/client.rs#L28-L47",
+          "version": "repo-lines-v1:sha256:1f881ec67b838986cd1fa73ab2f72aa747daff1bb9a0d24bc10f627d4d3f96ad:eyJzZWxlY3RlZExpbmVDb3VudCI6MjAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI5Njk3NTdlMTIwZmQ1MmFjOTgxZjM3OTBkYWVlZDUwZGQ2ODJkOTM4OTIyYjQ5Njk2ZmQ2NjViODUzMjNiNmEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImY1ZDNjOGZiYzZkZDY2NzdhNjE1NDBmYWY0ZTA3NTdmYWRjMThhNzA4OGI2MDI4Yjc4ZjVlMzVhZjgzZThmMGIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjdkM2Y0MzI0YzI4Y2U0ODBjZThkNjY3YTk5ZDc4NTc5MjZkOTc5NTBjZGE5ZjEwNjllZWYwMWJiYjVlM2JkYTYifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_08c6757614df495fbb7d087a0f57b206",
+      "statement": "The Email Delivery configuration lookup targets the control-plane host pattern `ctrl.email.{region}.oci.{realm_domain}` and fetches `/20170907/configuration?compartmentId=...` through the shared request executor.",
+      "evidence": [
+        {
+          "resource": "repo://src/services/email/client.rs#L23-L26",
+          "version": "repo-lines-v1:sha256:748cf3f24b63ad0d779f231c7363e175f72ac1eceb05c9b9ca7b67ce6eee896f:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiN2RmMGNjNGVhZjUzNzRlNDBmYWY5MjRjZTE4YTdkMjYwY2RkZjAyMjEwNzI3Mzg3YzQ5NDIxNWJhNmMwYjNiMCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDg5M2Y0MGUzNzgxZWI4OTZjODJkMDQ2YTA4MDY3YTExZTM1Y2RmMmYxZGZhZjI2ZmVhOTBiOGRiNjY3NjQxMyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZjc2YzBhMGRlZGYyYTVkZjU5MmQ5YjVmNWU4YWEzYzlkMGY2Zjg3ZWZmN2I4NjMxMDkzZTZhNGFhM2FmZjY5ZiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYjk5MDgyMjNkZjlmMDI1NzYzMTc1OGVjYTM2MGUzNTU4NDNjNGE0ZWY5MjdhNjk3NGRiMDc5NDRlZThiYzI3OSJ9"
+        },
+        {
+          "resource": "repo://src/services/email/client.rs#L49-L74",
+          "version": "repo-lines-v1:sha256:f1453aa4f1767cac565570d02bb60162c10cade57b4a41b4bf2439ad276f5a57:eyJzZWxlY3RlZExpbmVDb3VudCI6MjYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFmYjdlYTJhNGQwYzNhZDZiMDVlNWU3MTkyY2EyNTQ4YmU2YWYwZDllNDZkNmIyNjFjMWZhMGUyODM5YjQwZGMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImViOWEwOGJjMjlmNmViZWJlOWE1ZjAxOTAzZDk4NDVkYmNiNTg0MmE0NTVmMDdkNWY0MDAyZGFjMzJhNWM2MDUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQ4N2RhYmU5YjU2NTNmNDhjN2EzYmE5YTgzOWE5ZTQ2YzA0MmI0MjhhZmZhY2I1OTkyZjY2YzA5MDkwZjZiMTEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_c131e9265c1f4499bffce53f2e664cae",
+      "statement": "`send()` delegates to `send_impl()`, which backfills `email.sender.compartment_id` from `Oci::compartment_id()` when needed and posts JSON to `/20220926/actions/submitEmail` on the cached submit endpoint.",
+      "evidence": [
+        {
+          "resource": "repo://README.md#L227-L256",
+          "version": "repo-lines-v1:sha256:e30ad3a01afe53572c8ef053b7bd0844cb49d8452da7c6e6672f64b2713aad5e:eyJzZWxlY3RlZExpbmVDb3VudCI6MzAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAzYTg1MTY1MDQzOTM5MDI0YTM1MDFiNzJlOTdmMDEyMzhjZmQ4ZmFhZjYyNDBiMzRkZTAwZTM4NWU1MDViMDIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ3YzA2YzU2MWQ1YzMyNzM0MzY4NTI2OGE0NmIzMzkxZjM5OThlZWU4OTBkMmJlNTFmMGQyMWNjNGE1M2FlNmQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjZhM2NmNTE5MjM1NGY3MTYxNWFjNTEwMzRiM2U5N2MyMGVkYTk5NjQzZmNhZjViYmU2ZDQxYWQ1OWJkMTIxNjciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjU3NTM5MTc0YmRlYTllZjEzNmQzMGQ3ZTc3MjM1ZDdkOTk0YWExMDc3OTQ4NTgxZGE4M2U3MDc4YmFmY2M2YWEifQ"
+        },
+        {
+          "resource": "repo://src/services/email/client.rs#L89-L130",
+          "version": "repo-lines-v1:sha256:32c694b55a77863b22282da26c48b22be4fba452e068a50ea0e64db9a275ebfa:eyJzZWxlY3RlZExpbmVDb3VudCI6NDIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZmNjA0NjA1NDkwNzZjNmMxNjg1OGE1ZTk2YTNkNmJiODc4ZTc0NDBhZTg4M2YzZWRkN2QyZGNmNDcxZmNhMTAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQyNGIwMjk1ZjcxOTc5N2UzMWJlMjhhMzdiZGQ4OTYwOWMxNmFjMWRjN2ExYzEzYzI1YWFlMzU4NzI2YjIzMzkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjkzYTlmMDFkMmMwY2EzNjE4MTE4Y2FmMWQxODAyYjc1YTk2NjNmNWNkOWIxZjMzZDRkZTM2NDRhNTM2OTNmZGEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_4795a192585b499396d84a7682cbbc7e",
+      "statement": "`EmailDelivery` implements the `EmailSender` trait, and the repository documents mock-friendly `dyn EmailSender` usage while the real OCI integration suite covers configuration lookup, endpoint caching, and sender listing as ignored tests.",
+      "evidence": [
+        {
+          "resource": "repo://README.md#L334-L372",
+          "version": "repo-lines-v1:sha256:0b218918235643ac641db01acf2784e3216045853f819f44165cea69ddfe90ff:eyJzZWxlY3RlZExpbmVDb3VudCI6MzksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImYyMDhiZDBjMjNkNDJiMjdjMmQxNjBkZjI5MGVmZjkyZGRiZTAxNDQyODI5NjkzMTc4NWMzYWJlYTEyNTdhMTIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVmYTAyYjI0MDQzOTBhMTdmNGY3ZWQzYmFlMzNjMmVlOGRjZjkzYTNhOGFlMjlmMWQyZDQzZjM4OWExYzQ5NjciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjUwYmI3YmI0ZDBlNjhlNmIyOWFkMGQ0ZjJiZTdhNTkyZTYyZDhmMmI3Yjc1NDk2MTUwYjQ1MGNkMjQ0Y2U3NDgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjljMmE0Yzk1ZjhjYTUxMTMwN2IwMTRhZWFjZmJmZmY0NjdhMTU0YzQ0MDQ5NjQxMjY1MjE0ZGNlNzU4MTZiMWEifQ"
+        },
+        {
+          "resource": "repo://src/services/email/client.rs#L181-L185",
+          "version": "repo-lines-v1:sha256:66e4043d230fdaee03913f0728a79818c24fe95c75aa38442f0b1910d5451283:eyJzZWxlY3RlZExpbmVDb3VudCI6NSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNmU0YzM1YzRlMmRhMjAxNzNiOWRjMDEzODNmNDU2ZTNhMTFkYmJkOGJjYjllMmY0NzZjYTFmNjhhOGUwNjAxYiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDg5M2Y0MGUzNzgxZWI4OTZjODJkMDQ2YTA4MDY3YTExZTM1Y2RmMmYxZGZhZjI2ZmVhOTBiOGRiNjY3NjQxMyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMTllNzYzNTVjZjExOTk0ODBjM2Y5OTgzNmIxNDg2Yzg0MWQ4OTFmYWFkOTA0YzYwOGUwOTMwMjJkMzc1N2FlZSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYTUyMTYwNGIzNWZjNDBhZjAwY2JhNGVlYTJmZDVlMmMzYWYxODYzYjM5MTE4NWQ3YmY0YmIwOWU3MmQwYzhiMyJ9"
+        },
+        {
+          "resource": "repo://src/services/email/sender_trait.rs#L57-L66",
+          "version": "repo-lines-v1:sha256:c0b93e07a7cbfa7165a80e462cac25cb3582114c1f4e802b3d37a28c712a364d:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM2M2NiY2YxNGY5YTYxMzJlODZmNTFiZTU4NGNiMjQxMzMzMWU0NmM1N2IwYWI1ZGQ3OGJhYTYzZmE0MDRkYzUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMwYzA1Mjk2YmE3YjNkMGVlYzA4MmI2MmUwMWMyNzczYzMyMDVlMTQ0ZjQ3NTQwMDEzNmNlYjg3MGJjMzg5ZDciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjI4MzgyNWFiMDcwOWFiNmZlNDQ4ZGY3MGVlNGY2MWVhYzNhYTk1NDJmNTVmYzI2OTk5YjA4YzdjNTRiYmUzYWQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoxLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEifQ"
+        },
+        {
+          "resource": "repo://tests/real_oci_integration_test.rs#L72-L220",
+          "version": "repo-lines-v1:sha256:d5a8aa22b08f6b36b7db3d0c87adab35723937a3eec2d616b4ffae8faf2d3d78:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQ5LCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiI1MTk0ODRlZWRmMzY0ZmI4YzEyZjFlYjk4ZmJmNmE5YjRmNjUwZjQyNzg3NGE4ZDczNTkwMTBhYWRlNDMxYmM4IiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiJiYzI2Mzc3MmJlODAxMTMwOTMwMDdmYzI3ZGYxOGMwODkzN2VkNDQzMTNmN2VmZjIwMTg4NDljZTJhMGE3NTU4IiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiIxOWU3NjM1NWNmMTE5OTQ4MGMzZjk5ODM2YjE0ODZjODQxZDg5MWZhYWQ5MDRjNjA4ZTA5MzAyMmQzNzU3YWVlIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiJkY2I4ZmFmZjQ2NDZkZjU1NWM5ZWI1NjQ4N2NhMjM0NjUxYzM4YTcxYzMxZTdmYjgyNTk3Mzc4ZWFjYjkyODQ2In0"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.4.0",
+    "at": "2026-09-03T14:32:33.099Z"
+  }
+}

@@ -18,7 +18,7 @@ pub struct SignRequest<'a> {
     pub method: &'a str,
     pub path: &'a str,
     pub host: Option<&'a str>,
-    pub body: Option<&'a str>,
+    pub body: Option<&'a [u8]>,
     pub content_type: Option<&'a str>,
 }
 

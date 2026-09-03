@@ -122,12 +122,12 @@ You can unsubscribe at any time.
                 "Envelope ID: {envelope_id}",
                 envelope_id = response.envelope_id
             );
-            if let Some(suppressed) = response.suppressed_recipients {
-                if !suppressed.is_empty() {
-                    println!("⚠️  Suppressed recipients:");
-                    for recipient in suppressed {
-                        println!("  - {email}", email = recipient.email);
-                    }
+            if let Some(suppressed) = response.suppressed_recipients
+                && !suppressed.is_empty()
+            {
+                println!("⚠️  Suppressed recipients:");
+                for recipient in suppressed {
+                    println!("  - {email}", email = recipient.email);
                 }
             }
         }

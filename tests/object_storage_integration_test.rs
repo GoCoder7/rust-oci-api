@@ -89,11 +89,11 @@ async fn test_put_and_get_object() {
         .await
         .expect("Failed to get bucket");
 
-    let object_name = "test_object.txt";
-    let content = "Hello, OCI Object Storage!";
+    let object_name = "test_object.bin";
+    let content = vec![0x00_u8, 0x80, 0xFF, b'O', b'K'];
 
     // Put Object
-    let put_result = bucket.put_object(object_name, content).await;
+    let put_result = bucket.put_object(object_name, content.clone()).await;
     assert!(
         put_result.is_ok(),
         "Failed to put object: {:?}",
@@ -101,6 +101,7 @@ async fn test_put_and_get_object() {
     );
     let object = put_result.unwrap();
     assert_eq!(object.name, object_name);
+    assert_eq!(object.value.as_ref(), content.as_slice());
 
     // Get Object
     let get_result = bucket.get_object(object_name).await;
@@ -111,5 +112,12 @@ async fn test_put_and_get_object() {
     );
     let object = get_result.unwrap();
     assert_eq!(object.name, object_name);
-    assert_eq!(object.value, content);
+    assert_eq!(object.value.as_ref(), content.as_slice());
+
+    let delete_result = bucket.delete_object(object_name).await;
+    assert!(
+        delete_result.is_ok(),
+        "Failed to delete object: {:?}",
+        delete_result.err()
+    );
 }

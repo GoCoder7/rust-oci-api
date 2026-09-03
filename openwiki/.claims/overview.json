@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:2ef59289b009104e75508f1e132c5539da71b21c44a8b75ffe54ecf2d5e86760",
+  "claims": [
+    {
+      "id": "claim_75e152d4ec7a4c0c904039f00a293ccd",
+      "statement": "The crate root re-exports `Bytes`, `AuthMode`, `Oci`, `OciBuilder`, `Result`, and the top-level service modules so consumers can start from the crate root instead of reaching into `src/services/` directly.",
+      "evidence": [
+        {
+          "resource": "repo://src/client/http.rs#L317-L335",
+          "version": "repo-lines-v1:sha256:ef56aa0c99f73037e9438c5d983c7139c8cc725de8104169fc0be1caa92252f4:eyJzZWxlY3RlZExpbmVDb3VudCI6MTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFhMzE5M2Y4ZmRlNDUxZTM1YzU4ZDZkNmZmOTE1MmM2ZDFiYjMxMDZmZGU0ZGMwMmZiOTA1YWEzNWYzNGY5ZWIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjU0Njg3MzhmMDg5ZjExMmMxNTRiZDMyZjgwY2M0MzIwNWJjNzc0MjgzMzRlYmU4NjY3ZDBkNTAzZGFmZjE3YzIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjE0ZTMwYjAzYTI5OTE0NzgzNTg1YjYxYzhhOGVmZjVmMDA1MzI0MzNmMWQ5YzdiYTQ1MTgxYmJmZWMzMzgwYjgifQ"
+        },
+        {
+          "resource": "repo://src/lib.rs#L26-L45",
+          "version": "repo-lines-v1:sha256:f02c60a51da20cc629be6ff7d3c299ff4ff1012668693451836a9fac2d10a830:eyJzZWxlY3RlZExpbmVDb3VudCI6MjAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgwZTYyN2ZmNTZlYzc4ZDc0NzZmMjRkNWQ0ZTBkNDFmOTZiMDY2MTc5ZjViZjk3YjM2YThkZjM3ZDg0NDZlYzEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhjZmFiM2ExZmM2MmNhMDg0Nzc1MDJlNjZiMjFjM2YyZTE3YWMyMGVjZTAwNzNjODIyZTY1ZjUzODFmNjZiYmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYzYmY1MjY2NDQwOGFhMGVhMWE5OGQyZjIzZThhNDMzMjM1NDg2Mjc3OGQxMDcwMzc5OTJhYjNkODRmZmIwZTYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_050777bd88a64a1f8b138fca966f356d",
+      "statement": "The README lists Email Delivery, Object Storage, Vault Secrets, and Keys as the currently supported service surfaces and positions the crate as a Rust OCI API client.",
+      "evidence": [
+        {
+          "resource": "repo://README.md#L1-L19",
+          "version": "repo-lines-v1:sha256:91c3c16d0e3cdb0c1b6e1e54d7c84b8339c12d325e70e0385ba2d69d1bdc7217:eyJzZWxlY3RlZExpbmVDb3VudCI6MTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjczZDVkZjYxN2U2NDNlOGQ1OTkxZWMwZDk2OGZjMWQ2NjZkNmZiMzVhNGM5ODI3YmFhZmUyMTU1NjhiNzBkOWQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAzMjhhNmJmMDhhOGE2N2MwZmMwODQxNTZiZmFlOThiOTUyYWJjYzM4OWUzZmU2YmNjNWRiZDk0ZmQ2M2M3NmEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImRkMDAyNGQ5MDc1YjQzOGNmYjljZDU3MDcyNjBiM2IxMTY2ZmNmYmVmMWE3YzcyY2ZiZjUxNzlhNThlZTgzYjQifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_8588d2921dfb477b925b9c284d103510",
+      "statement": "The current package version is `0.9.0`, and the crate defines `native-tls` as the default feature set while exposing `rustls-tls` as an opt-in alternative.",
+      "evidence": [
+        {
+          "resource": "repo://Cargo.toml#L1-L47",
+          "version": "repo-lines-v1:sha256:74908cde6713691d0b6142bae4c81faa4a29c6845e17af0823eaa23674284838:eyJzZWxlY3RlZExpbmVDb3VudCI6NDcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhhM2NkNWE4MWIzZjlhNjIxYWE0OTNkOTBjNDVmNDJhYjU3MWQ0ZTQyYjhhZTVhZmYzNTFjYjBhMDJkMDZkODIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM0Yjk5MmM4Y2FiOTZmODdlMTUyNDA0YWJmYzQ0OTdkOTlhZTBlNjllYjEwYTVjM2NhZmU4ODIxZmNkNDliMWEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImEwMmIyNjJhNDA3MTM4ZmFiMzI5Yzc5NjI0MGM2Y2Q0NDA2OGU5OGU0OGNjZTdjMzJhNzBkNmJkNTMwYjZlZGQifQ"
+        },
+        {
+          "resource": "repo://README.md#L21-L37",
+          "version": "repo-lines-v1:sha256:57c7c118218108de97a63170a3b743775b0085e67e5305f0da9b15266fd07f4a:eyJzZWxlY3RlZExpbmVDb3VudCI6MTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImMzMmZkZGNmMjFiZGQ2ZTk0NTkwOWMwYzdlOTQxYjI3OWY2NjMxNWU1MjMxMTIyNjMwMGYwMWNmNjYxNTZhZTAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ3YzA2YzU2MWQ1YzMyNzM0MzY4NTI2OGE0NmIzMzkxZjM5OThlZWU4OTBkMmJlNTFmMGQyMWNjNGE1M2FlNmQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjI1ZTJmZjEzOTgzZDJjMTBkNzE3NzcyYjRhNGYyMjJjNDE0MzU2YjU2YTNmNmEwYWY1MjQxMjA3ODdmZmFkMDIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjNlYWFlMzY5ZWQ2OTk3OTRkZDcyMzQ5MWI2NmJjYzgyY2I5MTcwYzRmMTEzYWVjYjFmYzNhMDQzZDlkMzJiNTMifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_b68592394e914ada9aea84bc95594509",
+      "statement": "`Oci` is the main runtime entry point and exposes convenience constructors for Email Delivery, Object Storage, Vault Secrets, and Keys clients.",
+      "evidence": [
+        {
+          "resource": "repo://src/client/http.rs#L317-L335",
+          "version": "repo-lines-v1:sha256:ef56aa0c99f73037e9438c5d983c7139c8cc725de8104169fc0be1caa92252f4:eyJzZWxlY3RlZExpbmVDb3VudCI6MTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFhMzE5M2Y4ZmRlNDUxZTM1YzU4ZDZkNmZmOTE1MmM2ZDFiYjMxMDZmZGU0ZGMwMmZiOTA1YWEzNWYzNGY5ZWIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjU0Njg3MzhmMDg5ZjExMmMxNTRiZDMyZjgwY2M0MzIwNWJjNzc0MjgzMzRlYmU4NjY3ZDBkNTAzZGFmZjE3YzIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjE0ZTMwYjAzYTI5OTE0NzgzNTg1YjYxYzhhOGVmZjVmMDA1MzI0MzNmMWQ5YzdiYTQ1MTgxYmJmZWMzMzgwYjgifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.4.0",
+    "at": "2026-09-03T14:32:33.099Z"
+  }
+}

@@ -1,6 +1,9 @@
 use super::ObjectStorage;
 use crate::client::{AuthMode, Oci};
+use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
+use bytes::Bytes;
 use mockito::Server;
+use sha2::{Digest as _, Sha256};
 
 fn create_test_client() -> Oci {
     Oci::builder()
@@ -135,7 +138,7 @@ async fn test_put_object() {
     let object = bucket.put_object("test_object", "content").await.unwrap();
 
     assert_eq!(object.name, "test_object");
-    assert_eq!(object.value, "content");
+    assert_eq!(object.value.as_ref(), b"content");
     mock.assert_async().await;
 }
 
@@ -173,7 +176,7 @@ async fn test_get_object() {
     let object = bucket.get_object("test_object").await.unwrap();
 
     assert_eq!(object.name, "test_object");
-    assert_eq!(object.value, "content");
+    assert_eq!(object.value.as_ref(), b"content");
     mock.assert_async().await;
 }
 
@@ -221,7 +224,7 @@ async fn test_get_or_create_object() {
         .unwrap();
 
     assert_eq!(object.name, "test_object");
-    assert_eq!(object.value, "content");
+    assert_eq!(object.value.as_ref(), b"content");
     mock_get_404.assert_async().await;
     mock_put.assert_async().await;
 }
@@ -439,7 +442,7 @@ async fn test_get_object_with_checksums() {
     let bucket = os_client.get_bucket("test_bucket").await.unwrap();
     let object = bucket.get_object("test_object").await.unwrap();
 
-    assert_eq!(object.value, content);
+    assert_eq!(object.value.as_ref(), content.as_bytes());
 
     // Check MD5
     assert_eq!(object.md5, md5_b64);
@@ -547,4 +550,171 @@ async fn test_put_object_with_checksum() {
         .unwrap();
 
     mock_put.assert_async().await;
+}
+
+#[tokio::test]
+async fn test_put_object_with_non_utf8_bytes() {
+    use crate::services::object_storage::models::ChecksumAlgorithm;
+
+    let mut server = Server::new_async().await;
+    let content = vec![0x00_u8, 0x80, 0xFF];
+    let sha256_b64 = BASE64.encode(Sha256::digest(&content));
+    let md5_b64 = BASE64.encode(md5::compute(&content).0);
+
+    let _mock_bucket = server
+        .mock("GET", "/n/test_namespace/b/test_bucket/")
+        .with_status(200)
+        .create_async()
+        .await;
+
+    let mock_put = server
+        .mock("PUT", "/n/test_namespace/b/test_bucket/o/binary_object")
+        .match_header("content-length", "3")
+        .match_header("x-content-sha256", sha256_b64.as_str())
+        .match_header("opc-checksum-algorithm", "SHA256")
+        .match_header("opc-content-sha256", sha256_b64.as_str())
+        .match_body(content.clone())
+        .with_status(200)
+        .with_header("opc-content-md5", md5_b64.as_str())
+        .with_header("opc-content-sha256", sha256_b64.as_str())
+        .create_async()
+        .await;
+
+    let oci_client = create_test_client();
+    let mut os_client = ObjectStorage::new(&oci_client, "test_namespace");
+
+    let url = server.url();
+    let parts: Vec<&str> = url.split("://").collect();
+    os_client.protocol = parts[0].to_string();
+    os_client.endpoint = parts[1].to_string();
+
+    let mut bucket = os_client.get_bucket("test_bucket").await.unwrap();
+    bucket.protocol = parts[0].to_string();
+    bucket.endpoint = parts[1].to_string();
+
+    let object = bucket
+        .put_object_with_checksum("binary_object", content.clone(), ChecksumAlgorithm::SHA256)
+        .await
+        .unwrap();
+
+    assert_eq!(object.value.as_ref(), content.as_slice());
+    object.verify_checksums().unwrap();
+    assert!(object.try_utf8().is_err());
+
+    mock_put.assert_async().await;
+}
+
+#[tokio::test]
+async fn test_get_object_returns_non_utf8_bytes() {
+    let mut server = Server::new_async().await;
+    let content = vec![0x00_u8, 0x80, 0xFF];
+    let md5_b64 = BASE64.encode(md5::compute(&content).0);
+
+    let _mock_bucket = server
+        .mock("GET", "/n/test_namespace/b/test_bucket/")
+        .with_status(200)
+        .create_async()
+        .await;
+
+    let mock_object = server
+        .mock("GET", "/n/test_namespace/b/test_bucket/o/binary_object")
+        .with_status(200)
+        .with_header("content-md5", md5_b64.as_str())
+        .with_body(content.clone())
+        .create_async()
+        .await;
+
+    let oci_client = create_test_client();
+    let mut os_client = ObjectStorage::new(&oci_client, "test_namespace");
+
+    let url = server.url();
+    let parts: Vec<&str> = url.split("://").collect();
+    os_client.protocol = parts[0].to_string();
+    os_client.endpoint = parts[1].to_string();
+
+    let mut bucket = os_client.get_bucket("test_bucket").await.unwrap();
+    bucket.protocol = parts[0].to_string();
+    bucket.endpoint = parts[1].to_string();
+
+    let object = bucket.get_object("binary_object").await.unwrap();
+
+    assert_eq!(object.value, Bytes::from(content.clone()));
+    assert!(object.try_utf8().is_err());
+    object.verify_checksums().unwrap();
+
+    mock_object.assert_async().await;
+}
+
+#[tokio::test]
+async fn test_delete_object() {
+    let mut server = Server::new_async().await;
+
+    let _mock_bucket = server
+        .mock("GET", "/n/test_namespace/b/test_bucket/")
+        .with_status(200)
+        .create_async()
+        .await;
+
+    let mock_delete = server
+        .mock("DELETE", "/n/test_namespace/b/test_bucket/o/test_object")
+        .with_status(204)
+        .create_async()
+        .await;
+
+    let oci_client = create_test_client();
+    let mut os_client = ObjectStorage::new(&oci_client, "test_namespace");
+
+    let url = server.url();
+    let parts: Vec<&str> = url.split("://").collect();
+    os_client.protocol = parts[0].to_string();
+    os_client.endpoint = parts[1].to_string();
+
+    let mut bucket = os_client.get_bucket("test_bucket").await.unwrap();
+    bucket.protocol = parts[0].to_string();
+    bucket.endpoint = parts[1].to_string();
+
+    bucket.delete_object("test_object").await.unwrap();
+
+    mock_delete.assert_async().await;
+}
+
+#[tokio::test]
+async fn test_delete_object_preserves_api_error() {
+    let mut server = Server::new_async().await;
+
+    let _mock_bucket = server
+        .mock("GET", "/n/test_namespace/b/test_bucket/")
+        .with_status(200)
+        .create_async()
+        .await;
+
+    let mock_delete = server
+        .mock("DELETE", "/n/test_namespace/b/test_bucket/o/missing_object")
+        .with_status(404)
+        .with_body("not found")
+        .create_async()
+        .await;
+
+    let oci_client = create_test_client();
+    let mut os_client = ObjectStorage::new(&oci_client, "test_namespace");
+
+    let url = server.url();
+    let parts: Vec<&str> = url.split("://").collect();
+    os_client.protocol = parts[0].to_string();
+    os_client.endpoint = parts[1].to_string();
+
+    let mut bucket = os_client.get_bucket("test_bucket").await.unwrap();
+    bucket.protocol = parts[0].to_string();
+    bucket.endpoint = parts[1].to_string();
+
+    let err = bucket.delete_object("missing_object").await.unwrap_err();
+    match err {
+        crate::error::Error::ApiError { code, message } => {
+            assert_eq!(code, "404 Not Found");
+            assert_eq!(message, "not found");
+        }
+        other => panic!("Expected ApiError, got {other:?}"),
+    }
+
+    mock_delete.assert_async().await;
 }

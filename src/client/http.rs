@@ -20,8 +20,9 @@ use std::env;
 use std::sync::Arc;
 use std::time::Duration;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum AuthMode {
+    #[default]
     ApiKey,
     InstancePrincipal,
 }
@@ -196,7 +197,7 @@ impl Oci {
             .ok()
             .or_else(|| {
                 InstancePrincipalAuthProvider::tenancy_id_from_metadata_certificate_blocking(
-                    &metadata_client,
+                    metadata_client,
                     metadata_base_url
                         .as_deref()
                         .unwrap_or(DEFAULT_METADATA_BASE_URL),
@@ -469,12 +470,6 @@ impl OciBuilder {
             auth_mode: self.auth_mode,
             auth_provider,
         })
-    }
-}
-
-impl Default for AuthMode {
-    fn default() -> Self {
-        Self::ApiKey
     }
 }
 

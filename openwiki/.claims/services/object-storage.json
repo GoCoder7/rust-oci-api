@@ -1,0 +1,62 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:20f8453de49c54a0cc265ce2d9b974474b581d149e7c9fb1b60ea7b522e52860",
+  "claims": [
+    {
+      "id": "claim_77c3c78e9d224c3aae96d03fca873ec4",
+      "statement": "`ObjectStorage::new()` derives the Object Storage host from `Oci::region()` and `Oci::realm_domain()`, and `get_bucket()` performs a GET on `/n/{namespace}/b/{bucket}/` before returning a bucket-scoped client.",
+      "evidence": [
+        {
+          "resource": "repo://src/services/object_storage/client.rs#L29-L76",
+          "version": "repo-lines-v1:sha256:80b02391233ea0421941c1607960237e1648a0b7e5c18911c5c0652a5fa25845:eyJzZWxlY3RlZExpbmVDb3VudCI6NDgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRhNTJlZmZkZjA5MGU5ZWVlN2M5ZmMxYjYzOWM2ZDQxMGY1MGFmYTk1OTgwZWE0MTBjYjQyNjA0MWYzYTBiYTkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjZlNTg1OWY2MDE1YmVmZDcxOTVjMWUyMzc4MTNjOTRiN2EwMDJlYjMxM2ZjYTBjYjc5M2YzMzM4OGE5MGEyNDMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjlhMTE0MTYwM2Q0ZDQ3YjRiNjdlNGE1MzkzMTg2MjNjYzM3ZmY1OTkwODNlNGE1MTRjMjM1YzllMzA5NzQ5YjIifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_0d173e0b97344c08913e9fe8af38541c",
+      "statement": "The bucket object API is byte-oriented: `put_object()`, `put_object_with_checksum()`, and `get_or_create_object()` accept `AsRef<[u8]>` input, `get_object()` returns exact bytes without UTF-8 decoding, and `delete_object()` issues the DELETE call for the object path.",
+      "evidence": [
+        {
+          "resource": "repo://README.md#L377-L418",
+          "version": "repo-lines-v1:sha256:c46bb069a5104954278b15c1635ae698742b116ae4be906cc1da08e200b6dd0f:eyJzZWxlY3RlZExpbmVDb3VudCI6NDIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg5OWI5NzFjZmJlMmNkNmJiYjQ2MjU0ZGU4NmZhOWU4MTNmZjE3NmU3NzA5NmJhOGI0N2FiODk2ZmQwYWEwNDIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImI3YzkzOGNmZDIwZDhjY2Q1M2I5NWQwZGQ2ZTQxYzIxYTQ5ZDY2OTUzMmM2NDA1MTcxMTI1OTYyZTcxOTQwZjYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjljMzM5ZmY4MDE1ZmFhOTdlODgyZGFhYjdlOTlkMWY0NTllNDRjMmI0ZTgwYzNlMmRjODRmZDE0ZmJkMzNmMzUifQ"
+        },
+        {
+          "resource": "repo://src/services/object_storage/client.rs#L167-L320",
+          "version": "repo-lines-v1:sha256:6d5092c6e64ff733a3a18ad37913566e2f34e35be9643878532ce85d7042f4d1:eyJzZWxlY3RlZExpbmVDb3VudCI6MTU0LCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiJmZjNhMzA2OTVjMTNjMGI1OGZmZjc5MzU5OTIwOGQ0OWJkNWU5YTIyMDg5ZTQwMTY1NzM2MjM2NmRiZGJhYmY1IiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiI0ODkzZjQwZTM3ODFlYjg5NmM4MmQwNDZhMDgwNjdhMTFlMzVjZGYyZjFkZmFmMjZmZWE5MGI4ZGI2Njc2NDEzIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiIxNjJlZTU3ZTQxYThjMjBhZTAxNjRkZjI2MTQzOWRjYzQ5OWQzNTIwODM0MTUxNTE2ZDA0N2U4ZGVhZThhNDY2IiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiI0Njk2MTU5NzM5NDE4YmI2NjhkMzYwZTg5Mzg2ZjJiYmRmNzNiMjM0OTVkNzUwYTg3YTYxMWI5MWEwNmM0NDhhIn0"
+        }
+      ]
+    },
+    {
+      "id": "claim_464f42347b904fb792dfa5ac044a8f4b",
+      "statement": "`Object.value` is `Bytes`, the model exposes `try_utf8()` for text access, and `verify_checksums()` validates MD5 plus the optional `SHA256`, `SHA384`, or `CRC32C` checksum.",
+      "evidence": [
+        {
+          "resource": "repo://README.md#L463-L490",
+          "version": "repo-lines-v1:sha256:2d39e312c9c1e02895d28d2359439947bfcff443302cf392bb27f1ddcb9cdca0:eyJzZWxlY3RlZExpbmVDb3VudCI6MjgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjZjZWY2YzUxYmVkYjE0NTBhZGRkZDliYTg4YmMxZjQ5MDcwZmQ1ODA5ZTE1NGE5ZmFjZDAwYmI3MzNjMGY5ZjUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjE5NzkyNjgxNzIzMDAwYzBjYmI0Y2VjOWUzYWRjMGVhZDQyMmY4OGFlNjY4M2VmOWJlMjgwNDg2YzU2ODUxMzUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijg4MDkxOGFjNjQzMDcwNDAzMDA0MzI3OGFiYjE2NzAwMWM2ODM0M2ZjNWEzYWRmN2Y4MmI2MTY5NTI5Yjg0YWYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImQ1N2VlNTBmN2ZmMDNkM2Y4YmQ1NjI5ZDljNjQyM2IxNjdiYzA0ZmI4MzYxODExZmQ2YzZkMjY2MGY3ZTg5OTYifQ"
+        },
+        {
+          "resource": "repo://src/services/object_storage/models.rs#L23-L113",
+          "version": "repo-lines-v1:sha256:c6dbdea43e012e5f3bb9f14316417824c9f58be6ccd716e0c7cc6fb005a74b86:eyJzZWxlY3RlZExpbmVDb3VudCI6OTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFlOGY2NWQzMzk5ODhlZjA5OGI0NWYwNDZiNjc0MmM5YjBhZDIwYjJhNDY4ZmFlN2Q2OTI1OTlkNmM2NGMyYjMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjA3MWQ2NGMwYjg4NmUzN2Y1MzM4YjcyOGYwZjEzMGRhNDY3NTVhOWVlOWVjNTUxNDQ4NTA3OTFjMGMxZGMzNDkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjEzYzlmYTMxY2YzZTU0OGEwZjAyNmJkODJhMzg4ZGNkYWJlY2FiZTYzNjFmZTU2NzNkZDQ5ZTU3YzYxZWU0YzgifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_44903d4ad69e46ae8efe8b80d27d7e54",
+      "statement": "The repository's Object Storage tests cover non-UTF-8 uploads, non-UTF-8 downloads, successful deletes, DELETE error propagation, and an ignored real OCI integration flow that uploads raw bytes, round-trips them, and deletes the object.",
+      "evidence": [
+        {
+          "resource": "repo://src/services/object_storage/tests.rs#L555-L720",
+          "version": "repo-lines-v1:sha256:d080e7d99407d4a50d01c558b82fa5b69a09bf2df66b01a41809114debd5ccbf:eyJzZWxlY3RlZExpbmVDb3VudCI6MTY2LCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiI1MTk0ODRlZWRmMzY0ZmI4YzEyZjFlYjk4ZmJmNmE5YjRmNjUwZjQyNzg3NGE4ZDczNTkwMTBhYWRlNDMxYmM4IiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiI0MTJjYTM0NWNjZjc1YmY5YzA4MDZiY2U2OTViZThkZTgwOGI3OTk4NDI1MWE3YTU0ZDIwMmNmNjEwMWRkNDUxIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiI5NTA3NDRlOGNlMDU3ODNmOTFkZGI0ZDhlZWM2MzQyZGEyM2JkYjM4N2ZhYmZlMzZhOTY1MjYxNGI0MzcxNzFjIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MCwiZm9sbG93aW5nQ29udGV4dEhhc2giOiJlM2IwYzQ0Mjk4ZmMxYzE0OWFmYmY0Yzg5OTZmYjkyNDI3YWU0MWU0NjQ5YjkzNGNhNDk1OTkxYjc4NTJiODU1In0"
+        },
+        {
+          "resource": "repo://tests/object_storage_integration_test.rs#L1-L123",
+          "version": "repo-lines-v1:sha256:180d8dca99d1f2d4140d9c4712d6b09c230b5dc5ea46d7c97c616ffa76dba397:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIzLCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiIxN2YwYTIxMjU3YjZmN2QyNjY4MzIyYWRhMzQzMDZhYzU4N2QwMGI5NmEzMDY0NzUyNWM5NWZiZGUyZWI0MTc5IiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiI0MTJjYTM0NWNjZjc1YmY5YzA4MDZiY2U2OTViZThkZTgwOGI3OTk4NDI1MWE3YTU0ZDIwMmNmNjEwMWRkNDUxIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MCwicHJlY2VkaW5nQ29udGV4dEhhc2giOiJlM2IwYzQ0Mjk4ZmMxYzE0OWFmYmY0Yzg5OTZmYjkyNDI3YWU0MWU0NjQ5YjkzNGNhNDk1OTkxYjc4NTJiODU1IiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MCwiZm9sbG93aW5nQ29udGV4dEhhc2giOiJlM2IwYzQ0Mjk4ZmMxYzE0OWFmYmY0Yzg5OTZmYjkyNDI3YWU0MWU0NjQ5YjkzNGNhNDk1OTkxYjc4NTJiODU1In0"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.4.0",
+    "at": "2026-09-03T14:32:33.099Z"
+  }
+}

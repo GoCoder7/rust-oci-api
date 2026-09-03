@@ -157,7 +157,7 @@ impl InstancePrincipalAuthProvider {
             "POST",
             path,
             None,
-            Some(&body_json),
+            Some(body_json.as_bytes()),
             Some("application/json"),
             None,
         )?;

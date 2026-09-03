@@ -1,6 +1,7 @@
 use crate::error::{Error, Result};
 use crate::services::object_storage::client::Bucket;
 use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
+use bytes::Bytes;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest as ShaDigest, Sha256, Sha384};
 
@@ -24,8 +25,8 @@ pub enum ChecksumAlgorithm {
 pub struct Object {
     /// Object name
     pub name: String,
-    /// Object content
-    pub value: String,
+    /// Raw object content
+    pub value: Bytes,
     /// MD5 Checksum (Default)
     pub md5: String,
     /// Additional Checksum (Optional)
@@ -33,9 +34,9 @@ pub struct Object {
 }
 
 impl Object {
-    pub fn new(name: impl Into<String>, value: impl Into<String>) -> Self {
-        let value = value.into();
-        let digest = md5::compute(value.as_bytes());
+    pub fn new(name: impl Into<String>, value: impl AsRef<[u8]>) -> Self {
+        let value = Bytes::copy_from_slice(value.as_ref());
+        let digest = md5::compute(value.as_ref());
         let md5 = BASE64.encode(*digest);
 
         Self {
@@ -46,9 +47,15 @@ impl Object {
         }
     }
 
+    /// View the object body as UTF-8 text.
+    pub fn try_utf8(&self) -> Result<&str> {
+        std::str::from_utf8(self.value.as_ref())
+            .map_err(|e| Error::Other(format!("Object '{}' is not valid UTF-8: {e}", self.name)))
+    }
+
     /// Verify checksums
     pub fn verify_checksums(&self) -> Result<()> {
-        let data = self.value.as_bytes();
+        let data = self.value.as_ref();
 
         // Verify MD5 (Default)
         let digest = md5::compute(data);

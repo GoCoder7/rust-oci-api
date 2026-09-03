@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.9.0] - Unreleased
+
+### Added
+
+- `Bucket::delete_object()` for object removal with the existing `ApiError` behavior preserved on unsuccessful responses.
+- Object Storage payloads now round-trip as raw bytes via `bytes::Bytes`, including a `Object::try_utf8()` helper for callers that still expect text.
+- A crate-level `Bytes` re-export and an opt-in `rustls-tls` feature for reqwest TLS backend selection.
+
+### Changed
+
+- Object Storage uploads, downloads, and request signing now operate on raw bytes so `content-length`, `x-content-sha256`, and checksum headers are derived from the exact transmitted payload.
+- `main` now tracks the v0.8.0 baseline after fast-forwarding from `smoke/instance-principal-runner`.
+
 ## [0.8.0] - 2026-05-14
 
 ### Added

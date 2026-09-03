@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:0018658fdc3ba4ffd7674c757ac70d127b9150f42f75300e938d8494d82866ba",
+  "claims": [
+    {
+      "id": "claim_98cef56238ca47a5934ab83f94f78358",
+      "statement": "`VaultSecretsClient::new()` derives its host as `secrets.vaults.{region}.oci.{realm_domain}`, and the current client surface exposes secret-bundle reads by ID, by stage, and by version number.",
+      "evidence": [
+        {
+          "resource": "repo://src/services/vault/client.rs#L8-L99",
+          "version": "repo-lines-v1:sha256:6de26128d6fe5f5e8215cade4c348edc012531f9fd0aa943c5e159b876df6728:eyJzZWxlY3RlZExpbmVDb3VudCI6OTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImI5MDZjYWZiZDM3ODM1NmQ2ZTI1NWJiMGE4NWNjYWMyMzMzMDZmMjQwNmViN2QwMzM1MjRhNDc5OGM5MDM0YzIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImM3N2QwNTg2OGY2ODgyOTRiYThmMWVhMjIzOWQzZWNjZTdkYjNmMWUwNzcwMzIyMDllNjU4OTk5N2IyNWEwMDkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoxLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_fd0ba50cfb364005a7ac971447f1d395",
+      "statement": "`SecretBundleContent` supports both raw-byte decoding and UTF-8 decoding through `decoded_bytes()` and `decoded_string()`.",
+      "evidence": [
+        {
+          "resource": "repo://src/services/vault/models.rs#L6-L37",
+          "version": "repo-lines-v1:sha256:797b50ff6bd75e0387bb494573abacf62ec2dc4b5ced17138f98fcd302379d47:eyJzZWxlY3RlZExpbmVDb3VudCI6MzIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVhOWNmNTJiNmE1ZWVhZTNkMzE3N2UyODk3N2JjNzdhZmJjOGIwODRkNWNiMjBlMTU4MzFjY2VjNWY2MjgyNmUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjU5Y2E5YzEwMzIzOTZmOGU2NzViMDM4ZTY1NmRlMDVjYmQ0OGY0YTY3Yzg3MzBiZmM4NWE5MTAyNjZjZGMzYjMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_d42a717c442a46df9426e5d270fc8cbb",
+      "statement": "`KeysClient::new()` normalizes the supplied management endpoint, and the current Keys surface supports `get_key(key_id)` plus `rotate_key(key_id)` via the `/20180608/keys/{key_id}/actions/rotate` endpoint.",
+      "evidence": [
+        {
+          "resource": "repo://README.md#L536-L560",
+          "version": "repo-lines-v1:sha256:3cd8043312d353bddd819cbb72398ff1918d535f3d3b942cefd4dcc2e9200cef:eyJzZWxlY3RlZExpbmVDb3VudCI6MjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4NWRmNmQ3ZGU3OTMyNTVmOWFhMThjZDZhNjcxZGFmN2Q2ZTcxOThjOGRiZTFmMzQyNzRjOWYzZGEwNDUzZTQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM0MGQ5MjVhMTY4YjIyNWEyZDdmYzE1ZTUxMTllNTBhN2JmZDdjYzUwMjM4MWQ3YTAzN2Q4MjI5YmFkMjJhMGMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjIwMGMwNTJlODA5YzRmYzJkNWY5YjhlZmJhMDg3ZmFkZmM1MzMyNWRjMGQ3ZTI0ZjJmNjQ5NGFjYmYzZGUxNTgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImI3YzkzOGNmZDIwZDhjY2Q1M2I5NWQwZGQ2ZTQxYzIxYTQ5ZDY2OTUzMmM2NDA1MTcxMTI1OTYyZTcxOTQwZjYifQ"
+        },
+        {
+          "resource": "repo://src/services/keys/client.rs#L9-L90",
+          "version": "repo-lines-v1:sha256:c2cc35acb463f295083f4355f71a971a95066b5c7cfb47c063e10bdc480acc74:eyJzZWxlY3RlZExpbmVDb3VudCI6ODIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImI5MDZjYWZiZDM3ODM1NmQ2ZTI1NWJiMGE4NWNjYWMyMzMzMDZmMjQwNmViN2QwMzM1MjRhNDc5OGM5MDM0YzIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImM1ZmMwMjY3N2JlY2MyMzcxNTA1YjJkNGZlMWVmMmU3MmE3MTYzN2JlYTQ2NGM5ZjJjNmIwYWYwODQyMjQxMWIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_72a41c6591b6487aaf26d0d27cc13a69",
+      "statement": "The README explicitly limits the current Vault and Keys documentation to phase-1 scope: current, staged, and versioned secret reads for Vault, plus key lookup and rotate for Keys.",
+      "evidence": [
+        {
+          "resource": "repo://README.md#L502-L560",
+          "version": "repo-lines-v1:sha256:7821aabb03e18a5f52608001d4fc4f582cccb7a7f62ccac6092757d121ab58c0:eyJzZWxlY3RlZExpbmVDb3VudCI6NTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImIzMTRlNjVkMmVmYjM3YmY2YjAwYTQwYmE0NzY0ODFlZjdkODgwOGU1ODNmM2RhNjYwYWU2YjUyODJjZDliZWIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM0MGQ5MjVhMTY4YjIyNWEyZDdmYzE1ZTUxMTllNTBhN2JmZDdjYzUwMjM4MWQ3YTAzN2Q4MjI5YmFkMjJhMGMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImI3YzkzOGNmZDIwZDhjY2Q1M2I5NWQwZGQ2ZTQxYzIxYTQ5ZDY2OTUzMmM2NDA1MTcxMTI1OTYyZTcxOTQwZjYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImI3YzkzOGNmZDIwZDhjY2Q1M2I5NWQwZGQ2ZTQxYzIxYTQ5ZDY2OTUzMmM2NDA1MTcxMTI1OTYyZTcxOTQwZjYifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.4.0",
+    "at": "2026-09-03T14:32:33.099Z"
+  }
+}

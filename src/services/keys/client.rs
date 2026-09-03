@@ -1,3 +1,4 @@
+use bytes::Bytes;
 use reqwest::Method;
 
 use crate::client::Oci;
@@ -54,7 +55,7 @@ impl KeysClient {
                     path: &path,
                 },
                 RequestPayload {
-                    body: Some("{}".to_owned()),
+                    body: Some(Bytes::from_static(b"{}")),
                     content_type: Some("application/json"),
                     extra_headers: Vec::new(),
                 },

@@ -1,0 +1,76 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:2af8e6cc60bd0730f98589fa45aa1a04d329bb0f2cff309a0945273c2213df4f",
+  "claims": [
+    {
+      "id": "claim_043e2dd7391147bd8f414394a43b5bdb",
+      "statement": "`oci-api` exposes two authentication modes through `AuthMode`: `ApiKey` and `InstancePrincipal`, and `Oci::from_env()` chooses between `from_api_key_env()` and `from_instance_principal_env()` after resolving the mode.",
+      "evidence": [
+        {
+          "resource": "repo://src/client/http.rs#L23-L27",
+          "version": "repo-lines-v1:sha256:20e84e75de04a9459bd57e887e84f5933ae6058828f094e8aabd720d67a36e90:eyJzZWxlY3RlZExpbmVDb3VudCI6NSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZTcxNmFmNzA5ZmVkMzQ5Y2I3N2NiNGRhNjJmOTZmMjc1MTIyYTgzMTMxNGU0YzU2Y2RmN2U4YjhmZmE0MWNlNyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDEyY2EzNDVjY2Y3NWJmOWMwODA2YmNlNjk1YmU4ZGU4MDhiNzk5ODQyNTFhN2E1NGQyMDJjZjYxMDFkZDQ1MSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMjc5ZjJlYTc1ODk0MmU4Y2Y4ZDM1YjkxNjU1YWZhNjhiMTA3MzI2MzEzZjcwODY5NDk5OGJlMThiMWE4ZGQ4ZCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMTQ2YTcyY2MzMGFiZDEyZjhhYzg4MjY0MTc4MjhjMDZhNGIwZWM5ODAwZWU3MGY1YTk2ZDBlZjY3MzM5ODcxZCJ9"
+        },
+        {
+          "resource": "repo://src/client/http.rs#L64-L73",
+          "version": "repo-lines-v1:sha256:10243ef6bfeb77752c4a5afe8f3e7baa052876153a9a2500224944440fc82a3a:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQyNWU5MTc5MzU1OWVkZGQ2ZTkwZGNmOGZhNDI3ZmI0MDI3Njc3ODg0NmE1OWYzNjNhZThhNTJhYzQ3NWFkNDAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE5ZTc2MzU1Y2YxMTk5NDgwYzNmOTk4MzZiMTQ4NmM4NDFkODkxZmFhZDkwNGM2MDhlMDkzMDIyZDM3NTdhZWUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjFjNjQzMTJkMDk2ZmQ5YmJlNWJmMDI1NjQyNDAzYzE1NDg1N2MyM2QxMDA1NTU4NjgyMTMwZWYxNzYxYjNhOWQifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_2d74a1fe6a3940d884ada0840d030849",
+      "statement": "`Oci::resolve_auth_mode_from_env()` applies this precedence order: explicit `OCI_AUTH_MODE`, then OCI metadata autodetection, then API key fallback.",
+      "evidence": [
+        {
+          "resource": "repo://README.md#L52-L65",
+          "version": "repo-lines-v1:sha256:7475454b1006a1ad9957e439c1cfa56cba78c6e1f2dd55747018db843b35aec2:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA2NjAwN2I4ZGQyOWUzODk4ZDFjY2QzODQzMjUwZjA5NzVlNDEwOGY0OTU5MTQ0YWE2NWZlMTFhM2UxMTg4MTciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNkOTUzMTFiYmJiOWI1MDFiNmQwNWNhNzdiZjU1ZTFmM2UxNDQwYzk5MWZhYmM0MjUxOTlkYThjMTk4NmE1MjMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjU3ZDdhZjM4MGMwZDZlNjhiN2Y0YTlhZWM1YzMwOTNkMzE3OWFkNjNkZGQzYmQyYmExNTNiZTZhMDEwZTYyNjMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImFkNWIxNTFhODhlNjkwYjhkZDk4ODUzNDMwYmI5MzQ3MWY4YjZmNTYxNzMxZDIzMjE3ZjY3NTFiNTcwZTRkM2MifQ"
+        },
+        {
+          "resource": "repo://src/client/http.rs#L75-L91",
+          "version": "repo-lines-v1:sha256:6cfdeedba0d6ed6f60499df4ce9debaaf47bf865d4284879b196c56ee31ee047:eyJzZWxlY3RlZExpbmVDb3VudCI6MTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU3ZDA5NTJhZjRiZjk0ZDM3MzhhNTExMmQxMzMzODNiZTBkMTAyZjAxMWIxMDdiM2ZmNzU4NzVkNzdhN2M4NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk5OWJkZWZlZWFjYTYzNDBlMDI5MGRjODZlODg5Yzg5ZDVlMTg5YWE1YmE0NGI1ODViM2I3MDczNGY0YTYyZDgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImI1YTQ1MTk5MjJjNzI2NTRjNjc4M2E5ZmUxMWUxM2Q2MDI2ZDgzMjZkOWE4MjU1YWQ5MDg4NDMxNDQ0ZmIwYjMifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_ae66fea2ec0543f899634d07e66e3660",
+      "statement": "The API key bootstrap merges `OCI_CONFIG` with per-field environment overrides for the user ID, tenancy ID, region, fingerprint, and private key, while keeping `OCI_COMPARTMENT_ID` optional.",
+      "evidence": [
+        {
+          "resource": "repo://src/client/http.rs#L93-L161",
+          "version": "repo-lines-v1:sha256:64b6ca0ffef5e384368179b11ff100bb19299ba4a3579b9e5b3d34e8ef10dcef:eyJzZWxlY3RlZExpbmVDb3VudCI6NjksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY0ZWUxMmE5YWYyNjc5MDIzYzFmYTI5M2FjYTdjNjkwYzkzMmYzYzIxNmI4OGYxNjg1OTc1NjM4NzYzMzZkZTEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM1Y2JkMjI0ZDNkNTA0Mzg0NmJlNjYyZDkzOTAyOWY0Y2JjNzYzNWQxYzcwOWRjMmRmNGUxMWZkMmIzYWVkMWYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjMyNWZjYWE4MjFhNGQzYTA1NTUzZDRmMjY3Yjc4Y2NiZjAzMTZjMzJjNTVhYmZhMmUwMDg1ZTIyMzA1NTFlNDUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImJlYWYyMDU2YzVlOWJlMjU3Y2NmODIzYmQ5MzgwY2E5NjM4MjU4ZWYxNGJhYjk3NjVkY2RiNmI1YzhmZDMyNGUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_0277bbb9fc40400d843bbc40ebfdee76",
+      "statement": "The Instance Principal bootstrap can derive region and tenancy information from OCI metadata and the instance identity certificate, uses the metadata-derived realm domain when available, and forwards an optional `OCI_METADATA_BASE_URL` override into the builder.",
+      "evidence": [
+        {
+          "resource": "repo://README.md#L67-L93",
+          "version": "repo-lines-v1:sha256:62d36a05dd99fb9b35da9035d3be5aa091b1ab4c54d9a2ab10939d893351c2f5:eyJzZWxlY3RlZExpbmVDb3VudCI6MjcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA3N2Y1ODhkZDBiYWJhNWI3ZGYwM2FkOTliOWQ0MzEyZWUzOWMzZWYyYzBiZGZkYWVmNjdlODYxNmViMTZhYjIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjEyMzI0MmI2MzMxNmZmYThkZGY5NWM4ZWU4Mzg1YTczMzJkOGE0OGM4YThiNWMwMTk4YjhjOGFmM2M4MTg0MGIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYyMzRjMzBkNjMxOGQzM2UxNDRlZTNmMzk4YzhlM2JmMzFlODhlMzE5MzAyMTI1MGZjMzhkOWY5MjJkOWU0MGYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjVmZmY0M2UwNzFlNDBkMWVlYzg2OGQ5ODIzYzI5NjE3ZTQwOWU0NDI1ZDljNzZlMmU5NjE5NWY3ZjE5NTNhMzUifQ"
+        },
+        {
+          "resource": "repo://src/client/http.rs#L164-L227",
+          "version": "repo-lines-v1:sha256:28868c6c4118d0b9257e0cca642231437840af65a1bafea86d244bf77816ca67:eyJzZWxlY3RlZExpbmVDb3VudCI6NjQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjUyNzVmZGE1Yzg3YzUxNzkwNjU1ZDc5NDRhYWM4OGU2MmUxZDk2ZjE5MTVjMjA1ZjBkYWJiYjA4Y2Q5ZmRmNGYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMwNmQxMGE5N2EwMDAxNTBjM2Y0MzIxMzUxNjcxYzM0ODk3OGIwOGRkNWY2ODkzYjkxZTNiZWVhYWEwYTU4MGUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjA1ODQxNTU5MGJjNGU4MmFmNDg0MDUzNmIxOWMwYzA0ZmNiODdlODAwZDc5ODUyNzQyMGU2N2EwNGY2MjdiZjYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjVhNWZlZjJlMjQ4OGEzNGZkNWY4NGYzMzI5OTJiMDIwYjZjYzU5N2I1MzgxMDc1Mzk4OGI2OWM4OWFiMTEyODcifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_6daf55b17a0c404b8da4f996b2beefe8",
+      "statement": "Both authentication modes end up using the common signing interface: `ApiKeyAuthProvider` passes request data into `OciSigner`, while `InstancePrincipalAuthProvider` resolves signer state and then signs the same `SignRequest` shape.",
+      "evidence": [
+        {
+          "resource": "repo://src/auth/providers/api_key.rs#L22-L42",
+          "version": "repo-lines-v1:sha256:ab2c5cbbca5410e1f7ec2a7b915e92af8d674935f4a75de599d2c910a0f056bd:eyJzZWxlY3RlZExpbmVDb3VudCI6MjEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjZlNGMzNWM0ZTJkYTIwMTczYjlkYzAxMzgzZjQ1NmUzYTExZGJiZDhiY2I5ZTJmNDc2Y2ExZjY4YThlMDYwMWIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE5ZTc2MzU1Y2YxMTk5NDgwYzNmOTk4MzZiMTQ4NmM4NDFkODkxZmFhZDkwNGM2MDhlMDkzMDIyZDM3NTdhZWUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoxLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEifQ"
+        },
+        {
+          "resource": "repo://src/auth/providers/instance_principal.rs#L335-L356",
+          "version": "repo-lines-v1:sha256:4c89752fc522f8ec6518735cedb966a075309ac0141c2fb488cbfd565e4c7800:eyJzZWxlY3RlZExpbmVDb3VudCI6MjIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjZlNGMzNWM0ZTJkYTIwMTczYjlkYzAxMzgzZjQ1NmUzYTExZGJiZDhiY2I5ZTJmNDc2Y2ExZjY4YThlMDYwMWIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE5ZTc2MzU1Y2YxMTk5NDgwYzNmOTk4MzZiMTQ4NmM4NDFkODkxZmFhZDkwNGM2MDhlMDkzMDIyZDM3NTdhZWUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjlkZTk5MWRhY2Q2YTE4MTRlZDdjZTA0Y2QyYmYxNjg2MzIwMDk3ODE4YTg3ZGJiYmZhMDJiNWU3ZGIyN2JhMDYifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.4.0",
+    "at": "2026-09-03T14:32:33.099Z"
+  }
+}

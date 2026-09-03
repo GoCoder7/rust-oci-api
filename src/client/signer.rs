@@ -29,7 +29,7 @@ struct SigningInput<'a> {
     method: &'a str,
     path: &'a str,
     host: Option<&'a str>,
-    body: Option<&'a str>,
+    body: Option<&'a [u8]>,
     date: &'a str,
     content_type: Option<&'a str>,
 }
@@ -107,7 +107,7 @@ impl OciSigner {
     /// * `method` - HTTP method (e.g., "GET", "POST")
     /// * `path` - Request path including query string (e.g., "/path?query=value")
     /// * `host` - Host header value
-    /// * `body` - Optional request body for POST/PUT requests
+    /// * `body` - Optional raw request body for POST/PUT requests
     /// * `content_type` - Optional content type (defaults to "application/json" if body is present)
     ///
     /// # Returns
@@ -117,7 +117,7 @@ impl OciSigner {
         method: &str,
         path: &str,
         host: &str,
-        body: Option<&str>,
+        body: Option<&[u8]>,
     ) -> Result<(String, String)> {
         let signed = self.sign_request_headers(method, path, Some(host), body, None, None)?;
         Ok((signed.date, signed.authorization))
@@ -129,7 +129,7 @@ impl OciSigner {
         method: &str,
         path: &str,
         host: &str,
-        body: Option<&str>,
+        body: Option<&[u8]>,
         content_type: &str,
     ) -> Result<(String, String)> {
         let signed =
@@ -142,7 +142,7 @@ impl OciSigner {
         method: &str,
         path: &str,
         host: Option<&str>,
-        body: Option<&str>,
+        body: Option<&[u8]>,
         content_type: Option<&str>,
         date: Option<&str>,
     ) -> Result<SignedRequestHeaders> {
@@ -170,7 +170,7 @@ impl OciSigner {
         method: &str,
         path: &str,
         host: &str,
-        body: Option<&str>,
+        body: Option<&[u8]>,
         date: &str,
         content_type: Option<&str>,
     ) -> Result<(String, String)> {
@@ -227,7 +227,7 @@ fn sign_request_headers(
     let body_sha256 = input.body.map(|body_content| {
         use sha2::{Digest, Sha256};
         let mut hasher = Sha256::new();
-        hasher.update(body_content.as_bytes());
+        hasher.update(body_content);
         general_purpose::STANDARD.encode(hasher.finalize())
     });
     let content_length = input
@@ -353,5 +353,46 @@ oF0r7fLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL
         );
 
         assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_sign_request_headers_uses_raw_body_bytes() {
+        use sha2::{Digest, Sha256};
+
+        let private_key = RsaPrivateKey::new(&mut OsRng, 2048).unwrap();
+        let pkcs8_pem = private_key.to_pkcs8_pem(LineEnding::LF).unwrap();
+        let signer = OciSigner::new(
+            "ocid1.user.oc1..test",
+            "ocid1.tenancy.oc1..test",
+            "aa:bb:cc:dd:ee:ff",
+            pkcs8_pem.as_str(),
+        )
+        .unwrap();
+
+        let body = [0x00_u8, 0x80, 0xFF];
+        let expected_sha256 = general_purpose::STANDARD.encode(Sha256::digest(body));
+        let signed = signer
+            .sign_request_headers(
+                "PUT",
+                "/n/test_namespace/b/test_bucket/o/test_object",
+                Some("objectstorage.ap-seoul-1.oraclecloud.com"),
+                Some(&body),
+                Some("application/octet-stream"),
+                Some("Tue, 01 Jan 2030 00:00:00 GMT"),
+            )
+            .unwrap();
+
+        assert_eq!(signed.content_length.as_deref(), Some("3"));
+        assert_eq!(
+            signed.content_type.as_deref(),
+            Some("application/octet-stream")
+        );
+        assert_eq!(
+            signed.x_content_sha256.as_deref(),
+            Some(expected_sha256.as_str())
+        );
+        assert!(signed.authorization.contains(
+            "headers=\"date (request-target) host content-length content-type x-content-sha256\""
+        ));
     }
 }

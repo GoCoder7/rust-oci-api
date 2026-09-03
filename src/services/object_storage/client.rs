@@ -5,7 +5,9 @@ use crate::client::request_executor::{RequestPayload, RequestTarget};
 use crate::error::{Error, Result};
 use crate::services::object_storage::models::*;
 use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
+use bytes::Bytes;
 use reqwest::Method;
+use reqwest::header::HeaderMap;
 use serde::Deserialize;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
@@ -94,7 +96,7 @@ impl Bucket {
         &self,
         method: Method,
         path: &str,
-        body: Option<String>,
+        body: Option<Bytes>,
         content_type: Option<&str>,
         extra_headers: Vec<(String, String)>,
     ) -> Result<reqwest::Response> {
@@ -122,14 +124,20 @@ impl Bucket {
         T: DeserializeOwned,
         B: Serialize,
     {
-        let body_str = if let Some(b) = &body {
-            Some(serde_json::to_string(b)?)
+        let body_bytes = if let Some(b) = body {
+            Some(Bytes::from(serde_json::to_vec(&b)?))
         } else {
             None
         };
         let method = parse_method(method)?;
         let response = self
-            .execute(method, path, body_str, Some("application/json"), Vec::new())
+            .execute(
+                method,
+                path,
+                body_bytes,
+                Some("application/json"),
+                Vec::new(),
+            )
             .await?;
         let text = response.text().await?;
         serde_json::from_str(&text).map_err(Into::into)
@@ -139,14 +147,20 @@ impl Bucket {
     where
         B: Serialize,
     {
-        let body_str = if let Some(b) = &body {
-            Some(serde_json::to_string(b)?)
+        let body_bytes = if let Some(b) = body {
+            Some(Bytes::from(serde_json::to_vec(&b)?))
         } else {
             None
         };
         let method = parse_method(method)?;
-        self.execute(method, path, body_str, Some("application/json"), Vec::new())
-            .await?;
+        self.execute(
+            method,
+            path,
+            body_bytes,
+            Some("application/json"),
+            Vec::new(),
+        )
+        .await?;
         Ok(())
     }
 
@@ -154,38 +168,46 @@ impl Bucket {
     ///
     /// # Arguments
     /// * `object_name` - Object name
-    /// * `content` - Object content
-    pub async fn put_object(&self, object_name: &str, content: &str) -> Result<Object> {
-        self.put_object_internal(object_name, content, None).await
+    /// * `content` - Raw object content
+    pub async fn put_object<B>(&self, object_name: &str, content: B) -> Result<Object>
+    where
+        B: AsRef<[u8]>,
+    {
+        self.put_object_internal(object_name, Bytes::copy_from_slice(content.as_ref()), None)
+            .await
     }
 
     /// Put Object with Checksum
     ///
     /// # Arguments
     /// * `object_name` - Object name
-    /// * `content` - Object content
+    /// * `content` - Raw object content
     /// * `algorithm` - Checksum algorithm to use
     pub async fn put_object_with_checksum(
         &self,
         object_name: &str,
-        content: &str,
+        content: impl AsRef<[u8]>,
         algorithm: ChecksumAlgorithm,
     ) -> Result<Object> {
-        self.put_object_internal(object_name, content, Some(algorithm))
-            .await
+        self.put_object_internal(
+            object_name,
+            Bytes::copy_from_slice(content.as_ref()),
+            Some(algorithm),
+        )
+        .await
     }
 
     async fn put_object_internal(
         &self,
         object_name: &str,
-        content: &str,
+        content: Bytes,
         algorithm: Option<ChecksumAlgorithm>,
     ) -> Result<Object> {
         let path = format!("/n/{}/b/{}/o/{}", self.namespace, self.name, object_name);
         let mut extra_headers = Vec::new();
+        let data = content.as_ref();
 
         if let Some(algo) = algorithm {
-            let data = content.as_bytes();
             match algo {
                 ChecksumAlgorithm::SHA256 => {
                     let mut hasher = Sha256::new();
@@ -217,7 +239,7 @@ impl Bucket {
             .execute(
                 Method::PUT,
                 &path,
-                Some(content.to_owned()),
+                Some(content.clone()),
                 Some("application/octet-stream"),
                 extra_headers,
             )
@@ -229,39 +251,11 @@ impl Bucket {
             .ok_or_else(|| Error::Other("Missing required header: opc-content-md5".to_string()))?
             .to_string();
 
-        let mut checksum = None;
-
-        if let Some(val) = headers
-            .get("opc-content-sha256")
-            .and_then(|h| h.to_str().ok())
-        {
-            checksum = Some(Checksum {
-                algorithm: ChecksumAlgorithm::SHA256,
-                value: val.to_string(),
-            });
-        } else if let Some(val) = headers
-            .get("opc-content-sha384")
-            .and_then(|h| h.to_str().ok())
-        {
-            checksum = Some(Checksum {
-                algorithm: ChecksumAlgorithm::SHA384,
-                value: val.to_string(),
-            });
-        } else if let Some(val) = headers
-            .get("opc-content-crc32c")
-            .and_then(|h| h.to_str().ok())
-        {
-            checksum = Some(Checksum {
-                algorithm: ChecksumAlgorithm::CRC32C,
-                value: val.to_string(),
-            });
-        }
-
         Ok(Object {
             name: object_name.to_string(),
-            value: content.to_string(),
+            value: content,
             md5,
-            checksum,
+            checksum: checksum_from_headers(headers),
         })
     }
 
@@ -269,49 +263,23 @@ impl Bucket {
     ///
     /// # Arguments
     /// * `object_name` - Object name
+    ///
+    /// Returns the exact object bytes without UTF-8 decoding.
     pub async fn get_object(&self, object_name: &str) -> Result<Object> {
         let path = format!("/n/{}/b/{}/o/{}", self.namespace, self.name, object_name);
         let response = self
             .execute(Method::GET, &path, None, None, Vec::new())
             .await?;
 
-        let headers = response.headers();
+        let headers = response.headers().clone();
         let md5 = headers
             .get("content-md5")
             .or_else(|| headers.get("opc-multipart-md5"))
             .and_then(|h| h.to_str().ok())
             .ok_or_else(|| Error::Other("Missing required header: content-md5".to_string()))?
             .to_string();
-
-        let mut checksum = None;
-
-        if let Some(val) = headers
-            .get("opc-content-sha256")
-            .and_then(|h| h.to_str().ok())
-        {
-            checksum = Some(Checksum {
-                algorithm: ChecksumAlgorithm::SHA256,
-                value: val.to_string(),
-            });
-        } else if let Some(val) = headers
-            .get("opc-content-sha384")
-            .and_then(|h| h.to_str().ok())
-        {
-            checksum = Some(Checksum {
-                algorithm: ChecksumAlgorithm::SHA384,
-                value: val.to_string(),
-            });
-        } else if let Some(val) = headers
-            .get("opc-content-crc32c")
-            .and_then(|h| h.to_str().ok())
-        {
-            checksum = Some(Checksum {
-                algorithm: ChecksumAlgorithm::CRC32C,
-                value: val.to_string(),
-            });
-        }
-
-        let value = response.text().await?;
+        let checksum = checksum_from_headers(&headers);
+        let value = response.bytes().await?;
 
         Ok(Object {
             name: object_name.to_string(),
@@ -327,15 +295,28 @@ impl Bucket {
     ///
     /// # Arguments
     /// * `object_name` - Object name
-    /// * `content` - Content to use if object needs to be created
-    pub async fn get_or_create_object(&self, object_name: &str, content: &str) -> Result<Object> {
+    /// * `content` - Raw content to use if object needs to be created
+    pub async fn get_or_create_object<B>(&self, object_name: &str, content: B) -> Result<Object>
+    where
+        B: AsRef<[u8]>,
+    {
+        let content = Bytes::copy_from_slice(content.as_ref());
         match self.get_object(object_name).await {
             Ok(obj) => Ok(obj),
             Err(Error::ApiError { code, .. }) if code.contains("404") => {
-                self.put_object(object_name, content).await
+                self.put_object_internal(object_name, content, None).await
             }
             Err(e) => Err(e),
         }
+    }
+
+    /// Delete Object
+    ///
+    /// # Arguments
+    /// * `object_name` - Object name
+    pub async fn delete_object(&self, object_name: &str) -> Result<()> {
+        let path = format!("/n/{}/b/{}/o/{}", self.namespace, self.name, object_name);
+        self.request_no_content("DELETE", &path, None::<()>).await
     }
 
     /// Get Retention Rules
@@ -399,6 +380,34 @@ impl Bucket {
 fn parse_method(method: &str) -> Result<Method> {
     Method::from_bytes(method.as_bytes())
         .map_err(|e| Error::Other(format!("Unsupported method {method}: {e}")))
+}
+
+fn checksum_from_headers(headers: &HeaderMap) -> Option<Checksum> {
+    if let Some(val) = headers
+        .get("opc-content-sha256")
+        .and_then(|h| h.to_str().ok())
+    {
+        Some(Checksum {
+            algorithm: ChecksumAlgorithm::SHA256,
+            value: val.to_string(),
+        })
+    } else if let Some(val) = headers
+        .get("opc-content-sha384")
+        .and_then(|h| h.to_str().ok())
+    {
+        Some(Checksum {
+            algorithm: ChecksumAlgorithm::SHA384,
+            value: val.to_string(),
+        })
+    } else {
+        headers
+            .get("opc-content-crc32c")
+            .and_then(|h| h.to_str().ok())
+            .map(|val| Checksum {
+                algorithm: ChecksumAlgorithm::CRC32C,
+                value: val.to_string(),
+            })
+    }
 }
 
 #[cfg(test)]

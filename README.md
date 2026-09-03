@@ -24,7 +24,15 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-oci-api = "0.8.0"
+oci-api = "0.9.0"
+tokio = { version = "1", features = ["full"] }
+```
+
+`oci-api` defaults to `native-tls`. To use rustls without the OpenSSL/native-tls path:
+
+```toml
+[dependencies]
+oci-api = { version = "0.9.0", default-features = false, features = ["rustls-tls"] }
 tokio = { version = "1", features = ["full"] }
 ```
 
@@ -369,7 +377,7 @@ For OCI Email Delivery documentation, see:
 ## Object Storage API
 
 ```rust
-use oci_api::Oci;
+use oci_api::{Bytes, Oci};
 use oci_api::object_storage::ObjectStorage;
 
 #[tokio::main]
@@ -383,24 +391,30 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Get Bucket
     let bucket = storage.get_bucket("your-bucket-name").await?;
 
-    // Put Object
+    // Put Object (text or binary)
     let object_name = "test-object.txt";
-    let value = "Hello, OCI Object Storage!";
-    let object = bucket.put_object(object_name, value).await?;
+    let value = Bytes::from("Hello, OCI Object Storage!");
+    let object = bucket.put_object(object_name, value.clone()).await?;
 
     // Put Object with Checksum (Optional)
     use oci_api::services::object_storage::models::ChecksumAlgorithm;
     let object = bucket.put_object_with_checksum(
         object_name, 
-        value, 
+        value.clone(), 
         ChecksumAlgorithm::SHA256
     ).await?;
 
-    // Get Object
+    // Get Object as raw bytes
     let object = bucket.get_object(object_name).await?;
+    assert_eq!(object.value, value);
+    let text = object.try_utf8()?;
+    println!("{text}");
 
     // Get or Create Object(if not exists)
-    let object = bucket.get_or_create_object(object_name, value).await?;
+    let object = bucket.get_or_create_object(object_name, value.clone()).await?;
+
+    // Delete Object
+    bucket.delete_object(object_name).await?;
 }
 ```
 
@@ -450,6 +464,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 It automatically maps available checksum headers into `md5`(`Content-MD5`)
 and `checksum`(`opc-content-sha256`|`opc-content-sha384`|`opc-content-crc32c`) fields.
+Downloaded object bodies are exposed as `Bytes`, so binary payloads round-trip without UTF-8 decoding.
 
  You can verify the integrity of the downloaded object using the `verify_checksums()` method.
 
@@ -461,6 +476,10 @@ let object = bucket.get_object("my-object").await?;
 // Verify integrity against all available checksums
 // Returns Ok(()) if all present checksums match, or an Error if any mismatch
 object.verify_checksums()?;
+
+// Convert to text only when you expect UTF-8
+let text = object.try_utf8()?;
+println!("Text payload: {text}");
 
 // Access specific checksums
 println!("MD5: {}", object.md5);
